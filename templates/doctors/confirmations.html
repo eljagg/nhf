@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">MCJ confirmations</h1>
+<p class="text-sm text-slate-600 mb-4">MCJ numbers on forms that are not in the NHF Doctors register. Confirm each with the Medical Council of Jamaica: a confirmed doctor joins the register; if the Council cannot confirm, every open application certified by that number is rejected.</p>
+<div class="space-y-4">
+{% for r in rows %}
+<div class="card"><div class="card-h"><h2>MCJ <span class="font-mono">{{ r.d.mcj_number }}</span> {% if r.d.last_name %}— {{ r.d.first_name }} {{ r.d.last_name }} (as written){% endif %}</h2><span class="text-xs text-slate-500">since {{ r.d.created_at|date:"j M H:i" }}</span></div>
+<div class="card-b">
+  <p class="text-sm mb-3">Waiting: {% for a in r.apps %}<a class="font-mono" href="{% url 'members:application' a.tracking_number %}">{{ a.tracking_number }}</a> {% empty %}no open applications{% endfor %}</p>
+  {% if can_decide %}<form method="post" action="{% url 'doctors:decide' r.d.mcj_number %}" class="grid md:grid-cols-[1fr_1fr_2fr_auto_auto] gap-2 items-end">{% csrf_token %}
+    <div><label class="lbl">First name</label><input class="inp" name="first_name" value="{{ r.d.first_name }}"></div>
+    <div><label class="lbl">Last name</label><input class="inp" name="last_name" value="{{ r.d.last_name }}"></div>
+    <div><label class="lbl">What the Council said</label><input class="inp" name="note" placeholder="e.g. Confirmed by phone with MCJ registry, ref. 4471"></div>
+    <button class="btn-primary" name="decision" value="confirm">Confirmed</button>
+    <button class="btn-danger" name="decision" value="reject" data-confirm="Reject every open application certified by MCJ {{ r.d.mcj_number }}?">Not confirmed</button>
+  </form>{% endif %}
+</div></div>
+{% empty %}<div class="card card-b text-slate-500">Nothing to confirm.</div>{% endfor %}
+</div>
+{% endblock %}

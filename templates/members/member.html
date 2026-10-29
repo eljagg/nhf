@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+  <div>
+    <div class="flex flex-wrap items-center gap-2"><h1>{{ m.full_name }}</h1><span class="b-{% if m.status == 'active' %}green{% else %}grey{% endif %}">{{ m.get_status_display }}</span>{% for e in enrolments %}{% if not e.ended_at %}<span class="b-brand">{{ e.programme.name }}</span>{% endif %}{% endfor %}</div>
+    <p class="text-sm text-slate-500 mt-1">Member <span class="font-mono font-semibold text-slate-800">{{ m.member_number }}</span> · {% if m.is_srn %}SRN{% else %}TRN{% endif %} <span class="font-mono">{{ m.trn }}</span>{% if m.is_srn %} <span class="b-amber">{{ m.srn_annotation }}</span>{% endif %} · registered {{ m.registered_at|date:"j M Y" }} at {{ m.registered_centre }}</p>
+  </div>
+  {% if can_process %}<div class="flex gap-2">
+    <form method="post" action="{% url 'members:start-change' m.member_number %}">{% csrf_token %}<button class="btn-primary">Start change form</button></form>
+  </div>{% endif %}
+</div>
+<div class="grid xl:grid-cols-[1fr_26rem] gap-5">
+  <div class="space-y-5 min-w-0">
+    <div class="card"><div class="card-h"><h2>Identity</h2><span class="lock">🔒 changed only through the TRN Validator</span></div>
+      <div class="card-b"><dl class="kv"><dt>Name</dt><dd>{{ m.full_name }}</dd><dt>Date of birth</dt><dd>{{ m.dob|date:"j M Y" }} (age {{ m.age }})</dd><dt>Gender</dt><dd>{{ m.get_gender_display }}</dd><dt>Last refreshed</dt><dd>{{ m.identity_refreshed_at|date:"j M Y H:i"|default:"—" }}</dd>{% if guardian %}<dt>Guardian</dt><dd>{{ guardian.full_name }} ({{ guardian.relationship }}){% if guardian.phone %} · {{ guardian.phone }}{% endif %}</dd>{% endif %}</dl></div></div>
+
+    <form method="post" class="card">{% csrf_token %}<input type="hidden" name="action" value="contact">
+      <div class="card-h"><h2>Contact details</h2><span class="text-xs text-slate-500">editable without an application</span></div>
+      <div class="card-b grid md:grid-cols-3 gap-4">
+        {% for f in contact_form %}<div class="{% if 'address' in f.name %}md:col-span-{% if f.name == 'address_line1' %}2{% else %}2{% endif %}{% endif %}"><label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>{% endfor %}
+        <div class="self-end">{% if can_process %}<button class="btn-secondary">Save contact details</button>{% endif %}</div>
+      </div>
+      <div class="px-4 pb-3 text-xs text-slate-500">Collection centre: {{ m.collection_centre }}. Any other change needs a change form.</div>
+    </form>
+
+    <div class="card"><div class="card-h"><h2>Medical conditions</h2></div>
+      {% if can_conditions %}<table class="tbl"><thead><tr><th>Condition</th><th>Severity</th><th>Certified by</th><th>On</th></tr></thead><tbody>
+      {% for c in conditions %}<tr><td>{{ c.condition.name }}</td><td>{{ c.get_severity_display }}</td><td>{% if c.certified_by %}<a href="{% url 'doctors:detail' c.certified_by.mcj_number %}">{{ c.certified_by }}</a>{% endif %}</td><td>{{ c.certified_on|date:"j M Y" }}</td></tr>{% empty %}<tr><td colspan="4">None recorded.</td></tr>{% endfor %}
+      </tbody></table>{% else %}<div class="card-b text-sm text-slate-500">{{ conditions|length }} condition(s) on record — details hidden for your role.</div>{% endif %}
+    </div>
+
+    <div class="card"><div class="card-h"><h2>Cards</h2></div><table class="tbl"><thead><tr><th>Version</th><th>Reason</th><th>State</th><th>Centre</th><th>Serial</th><th>Queued</th><th>Dispatched</th></tr></thead><tbody>
+      {% for c in cards %}<tr><td>v{{ c.version_no }}{% if c.reprint_seq %}.{{ c.reprint_seq }}{% endif %}</td><td>{{ c.get_reason_display }}</td><td>{{ c.get_state_display }}</td><td>{{ c.centre }}</td><td class="font-mono text-xs">{{ c.serial_number|default:"—" }}</td><td>{{ c.queued_at|date:"j M Y H:i" }}</td><td>{{ c.dispatched_at|date:"j M Y H:i"|default:"—" }}</td></tr>{% empty %}<tr><td colspan="7">No cards.</td></tr>{% endfor %}
+    </tbody></table></div>
+
+    <div class="card"><div class="card-h"><h2>Applications and forms</h2></div><table class="tbl"><thead><tr><th>Tracking no.</th><th>Kind</th><th>Channel</th><th>Received</th><th>Status</th></tr></thead><tbody>
+      {% for a in applications %}<tr><td><a class="font-mono" href="{% url 'members:application' a.tracking_number %}">{{ a.tracking_number }}</a></td><td>{{ a.get_kind_display }}</td><td>{{ a.get_channel_display }}</td><td>{{ a.received_at|date:"j M Y H:i" }}</td><td>{% include "_status.html" with s=a.status %}{% if a.rejection_reason %} <span class="text-xs">{{ a.rejection_reason.label }}</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="5" class="text-slate-500">Registered before this system (migrated record).</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+  <aside class="space-y-5">
+    <div class="card" id="log"><div class="card-h"><h2>Interaction log</h2><span class="text-xs text-slate-500">append-only</span></div>
+      {% if can_process %}<form method="post" action="{% url 'members:add-interaction' m.member_number %}" class="card-b border-b border-slate-100 space-y-2">{% csrf_token %}
+        <div class="grid grid-cols-[8rem_1fr] gap-2">{{ interaction_form.kind }}{{ interaction_form.summary }}</div><button class="btn-secondary btn-sm">Log interaction</button></form>{% endif %}
+      <ol class="divide-y divide-slate-100">
+      {% for i in interactions %}<li class="px-4 py-2.5 text-sm">
+        <div class="flex justify-between gap-2"><span class="text-xs text-slate-500">{{ i.at|date:"j M Y H:i" }} · {{ i.actor.display_name|default:"System" }}</span><span class="b-grey">{{ i.get_kind_display }}</span></div>
+        <p class="mt-0.5">{{ i.summary }}{% if i.application %} <a class="text-xs font-mono" href="{% url 'members:application' i.application.tracking_number %}">{{ i.application.tracking_number }}</a>{% endif %}</p>
+        {% for n in i.notes.all %}<p class="mt-1 ml-3 pl-2 border-l-2 border-brand-200 text-slate-700">{{ n.body }} <span class="text-xs text-slate-500">— {{ n.author.display_name }}, {{ n.at|date:"j M H:i" }}</span></p>{% endfor %}
+        {% if can_process %}<details class="mt-1"><summary class="text-xs text-brand-700 cursor-pointer">Add note</summary><form method="post" action="{% url 'interactions:add-note' i.pk %}" class="flex gap-2 mt-1">{% csrf_token %}<input class="inp" name="body" required aria-label="Note"><button class="btn-secondary btn-sm">Add</button></form></details>{% endif %}
+      </li>{% endfor %}</ol>
+    </div>
+  </aside>
+</div>
+{% endblock %}

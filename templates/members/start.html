@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">New application</h1>
+<p class="text-sm text-slate-600 mb-5">Record where and how the form arrived, then key the TRN with the name and date of birth exactly as written on the form. The Tax Office record is fetched and compared before anything else is typed.</p>
+<div class="grid xl:grid-cols-[1fr_24rem] gap-5">
+<form method="post" class="card" novalidate>{% csrf_token %}
+  <div class="card-h"><h2>1 · Application context</h2></div>
+  <div class="card-b grid md:grid-cols-3 gap-4">
+    <fieldset class="md:col-span-3"><legend class="lbl">{{ form.channel.label }}</legend>
+      <div class="flex flex-wrap gap-2">{% for r in form.channel %}<label class="flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm cursor-pointer has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">{{ r.tag }} {{ r.choice_label }}</label>{% endfor %}</div>
+      <p class="text-xs text-slate-500 mt-1">Online applications arrive from the doctors' portal and are tagged automatically.</p></fieldset>
+    <div><label class="lbl" for="id_centre">{{ form.centre.label }}</label>{{ form.centre }}</div>
+    <div><label class="lbl" for="id_received_at">{{ form.received_at.label }}</label>{{ form.received_at }}{% for e in form.received_at.errors %}<p class="text-xs text-red-700 mt-1">{{ e }}</p>{% endfor %}</div>
+  </div>
+  <div class="card-h border-t"><h2>2 · Identity as written on the form</h2></div>
+  <div class="card-b grid md:grid-cols-4 gap-4">
+    <div class="md:col-span-1"><label class="lbl" for="id_trn">TRN</label>{{ form.trn }}{% for e in form.trn.errors %}<p class="text-xs text-red-700 mt-1">{{ e }}</p>{% endfor %}</div>
+    <div><label class="lbl" for="id_form_first_name">{{ form.form_first_name.label }}</label>{{ form.form_first_name }}{% for e in form.form_first_name.errors %}<p class="text-xs text-red-700 mt-1">{{ e }}</p>{% endfor %}</div>
+    <div><label class="lbl" for="id_form_last_name">{{ form.form_last_name.label }}</label>{{ form.form_last_name }}{% for e in form.form_last_name.errors %}<p class="text-xs text-red-700 mt-1">{{ e }}</p>{% endfor %}</div>
+    <div><label class="lbl" for="id_form_dob">{{ form.form_dob.label }}</label>{{ form.form_dob }}{% for e in form.form_dob.errors %}<p class="text-xs text-red-700 mt-1">{{ e }}</p>{% endfor %}</div>
+  </div>
+  <div class="px-4 pb-4"><button class="btn-primary">Validate TRN and open the application</button></div>
+</form>
+<form method="post" action="{% url 'members:start-without-trn' %}" class="card self-start">{% csrf_token %}
+  <div class="card-h"><h2>No TRN?</h2><span class="b-amber">Needs manager approval</span></div>
+  <div class="card-b space-y-3">
+    <p class="text-sm text-slate-600">Request a Special Registration Number. It starts with 9, is checked for duplicates against members and the TRN register, and is issued only when a manager approves.</p>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="lbl" for="id_first_name">First name</label>{{ srn_form.first_name }}</div>
+      <div><label class="lbl" for="id_last_name">Last name</label>{{ srn_form.last_name }}</div>
+      <div><label class="lbl" for="id_middle_name">Middle name</label>{{ srn_form.middle_name }}</div>
+      <div><label class="lbl" for="id_gender">Gender</label>{{ srn_form.gender }}</div>
+      <div class="col-span-2"><label class="lbl" for="id_dob">Date of birth</label>{{ srn_form.dob }}</div>
+      <div class="col-span-2"><label class="lbl" for="id_reason">{{ srn_form.reason.label }}</label>{{ srn_form.reason }}</div>
+    </div>
+    <button class="btn-secondary w-full">Request SRN</button>
+  </div>
+</form>
+</div>
+{% endblock %}

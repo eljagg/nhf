@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">Tracking search</h1>
+<p class="text-sm text-slate-600 mb-4">Find a member or application by TRN or SRN, tracking number (NHF-A-…), member number, name, or programme.</p>
+<form class="card card-b flex flex-wrap gap-3 items-end mb-5">
+  <div class="flex-1 min-w-72"><label class="lbl" for="q">TRN, tracking no., member no. or name</label><input id="q" class="inp" name="q" value="{{ q }}" autofocus></div>
+  <div><label class="lbl" for="programme">Programme</label><select id="programme" name="programme" class="inp w-52"><option value="">Any</option>{% for p in programmes %}<option value="{{ p.code }}" {% if programme == p.code %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
+  <button class="btn-primary">Search</button>
+</form>
+{% if q or programme %}
+<div class="grid xl:grid-cols-2 gap-5">
+<div class="card"><div class="card-h"><h2>Members</h2><span class="text-xs text-slate-500">{{ members|length }}{% if members|length == 50 %}+{% endif %}</span></div><table class="tbl"><thead><tr><th>Member no.</th><th>Name</th><th>TRN</th><th>DOB</th><th>Centre</th></tr></thead><tbody>
+{% for m in members %}<tr><td><a class="font-mono" href="{% url 'members:member' m.member_number %}">{{ m.member_number }}</a></td><td>{{ m.full_name }}</td><td class="font-mono text-xs">{{ m.trn }}</td><td>{{ m.dob|date:"j M Y" }}</td><td>{{ m.collection_centre }}</td></tr>{% empty %}<tr><td colspan="5" class="text-slate-500">No members.</td></tr>{% endfor %}</tbody></table></div>
+<div class="card"><div class="card-h"><h2>Applications</h2></div><table class="tbl"><thead><tr><th>Tracking no.</th><th>Applicant</th><th>Kind</th><th>Status</th></tr></thead><tbody>
+{% for a in apps %}<tr><td><a class="font-mono" href="{% url 'members:application' a.tracking_number %}">{{ a.tracking_number }}</a></td><td>{{ a.applicant_name }}</td><td>{{ a.get_kind_display }}</td><td>{% include "_status.html" with s=a.status %}</td></tr>{% empty %}<tr><td colspan="4" class="text-slate-500">No applications.</td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endif %}
+{% endblock %}

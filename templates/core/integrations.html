@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">Integration Hub</h1>
+<p class="text-sm text-slate-600 mb-4">Every call to an external system, with its adapter. Phase A uses mocks for the TRN service, PHI and SMS; the real endpoints are configuration, not code.</p>
+<div class="flex flex-wrap gap-3 mb-4">{% for s in summary %}<a href="?system={{ s.system }}" class="stat no-underline min-w-40 {% if system == s.system %}ring-2 ring-brand-500{% endif %}"><div class="stat-n">{{ s.n }}</div><div class="stat-l">{{ s.system }}{% if s.failed %} · <span class="text-red-700">{{ s.failed }} failed</span>{% endif %}</div></a>{% endfor %}{% if system %}<a href="?" class="self-center text-sm">Show all</a>{% endif %}</div>
+<div class="card overflow-x-auto"><table class="tbl"><thead><tr><th>When</th><th>System</th><th>Operation</th><th>Adapter</th><th>Result</th><th>ms</th><th>Reference</th><th>Message</th></tr></thead><tbody>
+{% for r in page %}<tr><td class="whitespace-nowrap">{{ r.at|date:"j M H:i:s" }}</td><td>{{ r.system }}</td><td>{{ r.operation }}</td><td><span class="b-grey">{{ r.adapter }}</span></td><td>{% if r.ok %}<span class="b-green">ok</span>{% else %}<span class="b-red">failed</span>{% endif %}</td><td class="tabular-nums">{{ r.duration_ms }}</td><td class="font-mono text-xs">{{ r.reference }}</td><td class="text-xs">{{ r.message }}</td></tr>{% empty %}<tr><td colspan="8">No calls yet.</td></tr>{% endfor %}
+</tbody></table>{% include "_pager.html" %}</div>
+{% endblock %}

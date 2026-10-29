@@ -1,0 +1,73 @@
+<div id="identity" class="card" {% if validation and not validation.is_done %}hx-get="{% url 'members:identity-panel' app.tracking_number %}?poll=1" hx-trigger="every 1s" hx-swap="none"{% endif %}>
+  <div class="card-h">
+    <h2>Identity <span class="text-sm font-normal text-slate-500">· Identity Verification</span></h2>
+    <div class="flex items-center gap-2">
+      {% if app.is_srn %}<span class="b-amber">SRN</span>{% endif %}
+      {% if validation %}
+        {% if validation.status == "pending" %}<span class="b-blue">Checking with the Tax Office…</span>
+        {% elif validation.status == "valid" and validation.match_result == "mismatch" %}<span class="b-red">TRN valid · does not match form</span>
+        {% elif validation.status == "valid" and app.kind == "change" %}<span class="b-green">TRN valid · re-validated</span>
+        {% elif validation.status == "valid" %}<span class="b-green">TRN valid · {{ validation.get_match_result_display|default:"validated" }}</span>
+        {% elif validation.status == "invalid" %}<span class="b-red">TRN not found</span>
+        {% else %}<span class="b-amber">Service unavailable</span>{% endif %}
+      {% elif app.srn_issue %}<span class="b-amber">{{ app.srn_issue.get_status_display }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="card-b space-y-4">
+    <div class="grid md:grid-cols-[9rem_1fr_0.8fr_1.4fr_8rem_6rem] gap-3 items-end">
+      <div><div class="lbl">{% if app.is_srn %}SRN{% else %}TRN{% endif %}</div><div class="inp inp-lg bg-slate-100">{{ app.trn|default:"—" }}</div>{% if app.is_srn %}<p class="text-[0.7rem] text-amber-800 mt-1">Special Registration Number — no validated TRN</p>{% endif %}</div>
+      <div><div class="lbl">First name <span class="lock">🔒</span></div><input class="inp" readonly value="{{ app.first_name }}" aria-label="First name (locked)"></div>
+      <div><div class="lbl">Middle name <span class="lock">🔒</span></div><input class="inp" readonly value="{{ app.middle_name }}" aria-label="Middle name (locked)"></div>
+      <div><div class="lbl">Last name <span class="lock">🔒</span></div><input class="inp" readonly value="{{ app.last_name }}" aria-label="Last name (locked)"></div>
+      <div><div class="lbl">Date of birth <span class="lock">🔒</span></div><input class="inp" readonly value="{{ app.dob|date:'j M Y'|default:'' }}" aria-label="Date of birth (locked)"></div>
+      <div><div class="lbl">Gender <span class="lock">🔒</span></div><input class="inp" readonly value="{{ app.get_gender_display }}" aria-label="Gender (locked)"></div>
+    </div>
+    <p class="text-xs text-slate-500">Name, date of birth and gender come only from the TRN service (or an approved SRN). They cannot be typed or edited here, and the database rejects any other change to them.</p>
+
+    {% if validation.status == "pending" %}
+      <div class="finding-info">Waiting for the Tax Office through the ICT Authority. Keep keying the rest of the form; this panel updates by itself.</div>
+    {% elif validation.status == "valid" and validation.match_result == "mismatch" %}
+      <div class="rounded-md border border-red-200 overflow-hidden">
+        <table class="tbl"><thead><tr><th>Field</th><th>On the form</th><th>Tax Office record</th></tr></thead><tbody>
+        {% for d in validation.differences %}<tr><td>{{ d.label }}</td><td class="text-red-800 font-semibold">{{ d.form|default:"—" }}</td><td>{{ d.taj }}</td></tr>{% endfor %}
+        </tbody></table>
+      </div>
+      {% if can_process %}
+      <div class="grid md:grid-cols-2 gap-4">
+        <form method="post" action="{% url 'members:recheck' app.tracking_number %}" class="rounded-md border border-slate-200 p-3 space-y-2">{% csrf_token %}
+          <div class="text-sm font-semibold">Keying error? Correct what the form says and re-check</div>
+          <div class="grid grid-cols-3 gap-2">{{ recheck_form.form_first_name }}{{ recheck_form.form_last_name }}{{ recheck_form.form_dob }}</div>
+          <button class="btn-secondary btn-sm">Re-check TRN</button>
+        </form>
+        <form method="post" action="{% url 'members:terminate' app.tracking_number %}" class="rounded-md border border-red-200 bg-red-50/40 p-3 space-y-2">{% csrf_token %}
+          <div class="text-sm font-semibold text-red-900">The form really does differ</div>
+          <input class="inp" name="text" placeholder="Note (optional)">
+          <button class="btn-danger btn-sm" data-confirm="Terminate this application? It will be rejected with reason 'Identity does not match the Tax Office record'.">Terminate application</button>
+        </form>
+      </div>
+      {% endif %}
+    {% elif validation.status == "invalid" and can_process %}
+      <div class="finding-error">The Tax Office has no record of TRN {{ app.trn }}. Check the TRN card. If the applicant has no TRN, request a Special Registration Number.</div>
+      <div class="flex flex-wrap gap-2">
+        <form method="post" action="{% url 'members:notify-invalid' app.tracking_number %}">{% csrf_token %}<button class="btn-secondary btn-sm">Text the applicant</button></form>
+        <a href="#srn" class="btn-secondary btn-sm">Request SRN</a>
+        <form method="post" action="{% url 'members:reject-invalid' app.tracking_number %}">{% csrf_token %}<button class="btn-danger btn-sm" data-confirm="Reject with reason 'TRN could not be validated'?">Reject application</button></form>
+      </div>
+    {% elif validation.status == "unavailable" and can_process %}
+      <div class="finding-warning">{{ validation.message }} The application stays open — retry when the service is back, or request an SRN if the applicant cannot wait.</div>
+      <form method="post" action="{% url 'members:revalidate' app.tracking_number %}">{% csrf_token %}<button class="btn-secondary btn-sm">Retry TRN check</button></form>
+    {% endif %}
+    {% if identity_changes %}
+      <div class="rounded-md border border-amber-300 overflow-hidden">
+        <div class="px-3 py-2 text-sm bg-amber-50 text-amber-950 font-semibold">The Tax Office record has changed since registration{% if app.is_open %} — tick "Name / date of birth" below to apply it and reprint the card{% endif %}</div>
+        <table class="tbl"><thead><tr><th>Field</th><th>Member record</th><th>Tax Office now</th></tr></thead><tbody>
+        {% for d in identity_changes %}<tr><td>{{ d.label }}</td><td>{{ d.member|default:"—" }}</td><td class="font-semibold">{{ d.taj|default:"—" }}</td></tr>{% endfor %}
+        </tbody></table>
+      </div>
+    {% endif %}
+    {% if app.kind == "change" and can_process and not app.is_srn %}
+      <form method="post" action="{% url 'members:revalidate' app.tracking_number %}" class="flex items-center gap-3">{% csrf_token %}<button class="btn-secondary btn-sm">Refresh from the TRN service</button><span class="text-xs text-slate-500">Fresh call — name and date-of-birth changes reach the member record only this way.</span></form>
+    {% endif %}
+    {% if validation %}<p class="text-[0.7rem] text-slate-400">Checked {{ validation.created_at|date:"j M Y H:i:s" }} · adapter {{ validation.adapter|default:"…" }} · {{ validation.duration_ms }} ms</p>{% endif %}
+  </div>
+</div>

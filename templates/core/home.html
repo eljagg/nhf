@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="flex items-end justify-between gap-4 mb-5">
+  <div><h1>Good {% now "A" as ampm %}{% if ampm == "AM" %}morning{% else %}afternoon{% endif %}, {{ user.first_name|default:user.username }}</h1>
+  <p class="text-sm text-slate-500">{% now "l j F Y" %} · {{ user.centre|default:"All centres" }}</p></div>
+</div>
+<div class="grid lg:grid-cols-[1fr_22rem] gap-5">
+  <div class="space-y-5">
+    <form action="{% url 'members:start' %}" method="get" class="card card-b flex flex-wrap items-end gap-3">
+      <div class="flex-1 min-w-60"><div class="lbl">Applicant at the counter?</div><p class="text-sm text-slate-600">Start with the TRN — the Tax Office record fills the locked fields.</p></div>
+      <a href="{% url 'members:start' %}" class="btn-primary">Start new application</a>
+      <a href="{% url 'identity:screen' %}" class="btn-secondary">Screen a TRN only</a>
+    </form>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <a href="{% url 'members:applications' %}?status=ready" class="stat no-underline"><div class="stat-n">{{ stats.ready }}</div><div class="stat-l">Ready to approve</div></a>
+      <a href="{% url 'members:applications' %}" class="stat no-underline"><div class="stat-n">{{ stats.open }}</div><div class="stat-l">Open applications</div></a>
+      <a href="{% url 'intake:queue' %}" class="stat no-underline"><div class="stat-n">{{ stats.online }}</div><div class="stat-l">Online queue</div></a>
+      <a href="{% url 'cards:queue' %}" class="stat no-underline"><div class="stat-n">{{ stats.print_queue }}</div><div class="stat-l">Cards to print</div></a>
+      <div class="stat"><div class="stat-n">{{ stats.today_received }}</div><div class="stat-l">Received today</div></div>
+      <div class="stat"><div class="stat-n">{{ stats.today_approved }}</div><div class="stat-l">Approved today</div></div>
+      <a href="{% url 'identity:srn-list' %}" class="stat no-underline"><div class="stat-n">{{ stats.srn }}</div><div class="stat-l">SRNs awaiting approval</div></a>
+      <a href="{% url 'doctors:confirmations' %}" class="stat no-underline"><div class="stat-n">{{ stats.mcj }}</div><div class="stat-l">Doctors to confirm</div></a>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>My work</h2><a class="text-sm" href="{% url 'members:applications' %}?mine=1">All of mine</a></div>
+      <table class="tbl"><thead><tr><th>Tracking no.</th><th>Applicant</th><th>Kind</th><th>Received</th><th>Status</th></tr></thead><tbody>
+      {% for a in mine %}<tr><td><a href="{% url 'members:application' a.tracking_number %}" class="font-mono">{{ a.tracking_number }}</a></td><td>{{ a.applicant_name }}</td><td>{{ a.get_kind_display }}</td><td>{{ a.received_at|naturaltime }}</td><td>{% include "_status.html" with s=a.status %}</td></tr>
+      {% empty %}<tr><td colspan="5" class="text-slate-500">Nothing open in your name.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+  <aside class="space-y-5">
+    <div class="card"><div class="card-h"><h2>Register</h2></div><div class="card-b"><div class="stat-n">{{ stats.members|intcomma }}</div><div class="stat-l">Active members</div></div></div>
+    <div class="card"><div class="card-h"><h2>Last 7 days by channel</h2></div><div class="card-b space-y-2">
+      {% for c in by_channel %}<div class="flex justify-between text-sm"><span>{% if c.channel == "walk_in" %}Walk-in{% elif c.channel == "online" %}Online{% elif c.channel == "email" %}E-mail{% else %}Batch{% endif %}</span><span class="font-semibold tabular-nums">{{ c.n }}</span></div>{% empty %}<p class="text-sm text-slate-500">No applications yet.</p>{% endfor %}
+    </div></div>
+    <div class="card card-b text-sm text-slate-600"><span class="font-semibold text-slate-800">Keyboard:</span> <kbd class="font-mono">/</kbd> search · <kbd class="font-mono">Alt+N</kbd> new application</div>
+  </aside>
+</div>
+{% endblock %}

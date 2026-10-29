@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-1"><h1>Online Intake</h1>
+{% if demo %}<form method="post" action="{% url 'intake:simulate' %}" class="flex gap-2">{% csrf_token %}<button class="btn-secondary btn-sm" name="kind" value="new">Simulate portal: new</button><button class="btn-secondary btn-sm" name="kind" value="change">Simulate portal: change form</button></form>{% endif %}</div>
+<p class="text-sm text-slate-600 mb-4">Applications submitted by doctors through the online registration portal. The TRN is validated on arrival; Customer Care is e-mailed and the patient gets an SMS.</p>
+<div class="card overflow-x-auto"><table class="tbl"><thead><tr><th>Received</th><th>Tracking no.</th><th>Patient</th><th>Form</th><th>Doctor</th><th>TRN</th><th>Status</th><th>Being worked by</th>{% if can_assign %}<th>Assign</th>{% endif %}</tr></thead><tbody>
+{% for r in rows %}{% with a=r.a %}<tr>
+  <td>{{ a.received_at|naturaltime }}</td>
+  <td><a class="font-mono" href="{% url 'members:application' a.tracking_number %}">{{ a.tracking_number }}</a><div><span class="b-blue">Online</span></div></td>
+  <td>{{ a.applicant_name }}</td>
+  <td>{% if a.kind == "change" %}<span class="b-amber">Change form</span>{% else %}<span class="b-grey">New</span>{% endif %}</td>
+  <td class="text-xs">{{ a.referring_doctor_name }}<div class="font-mono">{{ a.doctor_mcj }}</div>{% if a.doctor.status == "pending" %}<span class="b-amber">MCJ check</span>{% endif %}</td>
+  <td>{% if a.identity_confirmed %}<span class="b-green">validated</span>{% elif a.trn_validation.status == "valid" %}<span class="b-red">mismatch</span>{% elif a.trn_validation.status == "invalid" %}<span class="b-red">not found</span>{% else %}<span class="b-grey">pending</span>{% endif %}</td>
+  <td>{% include "_status.html" with s=a.status %}</td>
+  <td>{% if r.locked_by %}<span class="b-amber">🔒 {{ r.locked_by.display_name }}</span>{% elif a.worked_by_id == user.pk %}<span class="b-brand">You</span>{% else %}<span class="text-xs text-slate-400">free</span>{% endif %}{% if a.assigned_to %}<div class="text-xs text-slate-500">assigned: {{ a.assigned_to.display_name }}</div>{% endif %}</td>
+  {% if can_assign %}<td><form method="post" action="{% url 'members:assign' a.tracking_number %}" class="flex gap-1">{% csrf_token %}<select name="user" class="inp py-0.5 text-xs w-32" aria-label="Assign to">{% for u in agents %}<option value="{{ u.pk }}" {% if a.assigned_to_id == u.pk %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}</select><button class="btn-secondary btn-sm">Assign</button></form></td>{% endif %}
+</tr>{% endwith %}{% empty %}<tr><td colspan="9" class="text-slate-500">The online queue is clear.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

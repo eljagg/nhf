@@ -1,0 +1,36 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_DB: nhf, POSTGRES_USER: nhf, POSTGRES_PASSWORD: nhf }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nhf" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://nhf:nhf@localhost:5432/nhf
+      SECRET_KEY: ci
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements-dev.txt
+      - name: Lint and static security analysis
+        run: ruff check . && ruff format --check . && bandit -q -r apps config -c pyproject.toml
+      - name: Dependency vulnerability scan
+        run: pip-audit -r requirements.txt
+      - name: Migrations are complete
+        run: python manage.py makemigrations --check --dry-run
+      - name: Tests
+        run: pytest --create-db
+      - name: Deployment checks
+        run: DJANGO_SETTINGS_MODULE=config.settings.prod SECRET_KEY=ci-only-not-a-real-key-0123456789abcdefghijklmnopqrstuvwxyz ALLOWED_HOSTS=example.com python manage.py check --deploy --fail-level WARNING
+  image:
+    runs-on: ubuntu-24.04
+    needs: test
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -t nhf-mrs:ci .

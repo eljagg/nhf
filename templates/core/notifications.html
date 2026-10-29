@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-4">Inbox</h1>
+<div class="grid lg:grid-cols-[1fr_26rem] gap-5">
+<div class="card"><table class="tbl"><thead><tr><th>When</th><th>Subject</th><th>Message</th><th></th></tr></thead><tbody>
+{% for n in page %}<tr class="{% if not n.read_at %}font-semibold{% endif %}"><td class="whitespace-nowrap">{{ n.created_at|timesince }} ago</td><td>{{ n.subject }}</td><td class="font-normal text-slate-700">{{ n.body }}</td><td>{% if n.link %}<form method="post" action="{% url 'core:notification-open' n.pk %}">{% csrf_token %}<button class="btn-secondary btn-sm">Open</button></form>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="4" class="text-slate-500">No notifications.</td></tr>{% endfor %}</tbody></table>{% include "_pager.html" %}</div>
+{% if outbound %}<div class="card"><div class="card-h"><h2>Outbound SMS and e-mail</h2><span class="text-xs text-slate-500">SMS gateway connected in Phase B</span></div><ul class="divide-y divide-slate-100">
+{% for n in outbound %}<li class="px-4 py-2 text-sm"><div class="flex justify-between"><span class="b-grey">{{ n.get_channel_display }} → {{ n.to }}</span><span class="text-xs text-slate-500">{{ n.get_status_display }} · {{ n.created_at|timesince }} ago</span></div><p class="mt-1 text-slate-700">{{ n.body }}</p></li>{% endfor %}</ul></div>{% endif %}
+</div>
+{% endblock %}

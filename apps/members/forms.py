@@ -1,0 +1,188 @@
+"""Counter forms."""
+
+from django import forms
+from django.utils import timezone
+
+from apps.core.models import PARISHES, Centre
+
+from .models import Application, Member
+
+
+class DateInput(forms.DateInput):
+    """HTML5 date picker (value must be ISO for the browser to show it)."""
+
+    input_type = "date"
+
+    def __init__(self, attrs=None, format="%Y-%m-%d"):  # noqa: A002 - Django's own argument name
+        super().__init__(attrs=attrs, format=format)
+
+
+class DateTimeInput(forms.DateTimeInput):
+    """HTML5 date-time picker."""
+
+    input_type = "datetime-local"
+
+
+def _style(form):
+    for field in form.fields.values():
+        widget = field.widget
+        if isinstance(widget, forms.CheckboxInput | forms.RadioSelect | forms.CheckboxSelectMultiple):
+            continue
+        widget.attrs.setdefault("class", "inp")
+
+
+class StartForm(forms.Form):
+    """MR10001/MR10010/MR10012: capture the application context, then the TRN as written on the form."""
+
+    channel = forms.ChoiceField(
+        label="Entry channel", choices=[c for c in Application.CHANNELS if c[0] != "online"], initial="walk_in", widget=forms.RadioSelect
+    )
+    centre = forms.ModelChoiceField(label="Processing centre", queryset=Centre.objects.filter(is_active=True))
+    received_at = forms.DateTimeField(label="Date and time received", widget=DateTimeInput(format="%Y-%m-%dT%H:%M"), input_formats=["%Y-%m-%dT%H:%M"])
+    trn = forms.CharField(
+        label="TRN",
+        max_length=11,
+        widget=forms.TextInput(attrs={"inputmode": "numeric", "autocomplete": "off", "autofocus": True, "class": "inp inp-lg", "placeholder": "000 000 000"}),
+    )
+    form_first_name = forms.CharField(label="First name (as on form)", max_length=60)
+    form_last_name = forms.CharField(label="Last name (as on form)", max_length=60)
+    form_dob = forms.DateField(label="Date of birth (as on form)", widget=DateInput())
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style(self)
+        self.fields["received_at"].initial = timezone.localtime().strftime("%Y-%m-%dT%H:%M")
+        if user is not None and user.centre_id:
+            self.fields["centre"].initial = user.centre_id
+
+    def clean_trn(self):
+        """Nine digits."""
+        trn = "".join(ch for ch in self.cleaned_data["trn"] if ch.isdigit())
+        if len(trn) != 9:
+            raise forms.ValidationError("A TRN has nine digits.")
+        return trn
+
+    def clean_received_at(self):
+        """Cannot be in the future."""
+        value = self.cleaned_data["received_at"]
+        if value > timezone.now() + timezone.timedelta(minutes=5):
+            raise forms.ValidationError("The received time cannot be in the future.")
+        return value
+
+
+class RecheckForm(forms.Form):
+    """Correct a keying error on the form details and re-check the TRN."""
+
+    form_first_name = forms.CharField(
+        label="First name (as on form)", max_length=60, widget=forms.TextInput(attrs={"placeholder": "First name", "aria-label": "First name as on form"})
+    )
+    form_last_name = forms.CharField(
+        label="Last name (as on form)", max_length=60, widget=forms.TextInput(attrs={"placeholder": "Last name", "aria-label": "Last name as on form"})
+    )
+    form_dob = forms.DateField(label="Date of birth (as on form)", widget=DateInput(attrs={"aria-label": "Date of birth as on form"}))
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("auto_id", "rc_%s")
+        super().__init__(*args, **kwargs)
+        _style(self)
+
+
+class ApplicationForm(forms.ModelForm):
+    """Editable part of the counter screen. Name, DOB and gender are not here: they come from the TRN service only."""
+
+    class Meta:
+        model = Application
+        fields = [
+            "phone_mobile",
+            "phone_home",
+            "email",
+            "address_line1",
+            "address_line2",
+            "parish",
+            "collection_centre",
+            "guardian_name",
+            "guardian_relationship",
+            "guardian_trn",
+            "guardian_phone",
+            "doctor_mcj",
+            "referring_doctor_name",
+            "change_contact",
+            "change_conditions",
+            "change_guardian",
+            "change_identity",
+            "reprint_reason",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["collection_centre"].queryset = Centre.objects.filter(is_active=True)
+        self.fields["parish"].choices = [("", "—")] + PARISHES
+        self.fields["doctor_mcj"].widget.attrs["inputmode"] = "numeric"
+        if self.instance.kind != "change":
+            for f in ("change_contact", "change_conditions", "change_guardian", "change_identity", "reprint_reason"):
+                self.fields.pop(f)
+        _style(self)
+        if not self.instance.is_open:
+            for field in self.fields.values():
+                field.disabled = True
+
+    def clean_guardian_trn(self):
+        """Optional; nine digits when given."""
+        value = "".join(ch for ch in self.cleaned_data.get("guardian_trn", "") if ch.isdigit())
+        if value and len(value) != 9:
+            raise forms.ValidationError("A TRN has nine digits.")
+        return value
+
+
+class RejectForm(forms.Form):
+    """MR10008: reason from the configurable list, plus free text."""
+
+    reason = forms.ModelChoiceField(queryset=None, label="Reason")
+    text = forms.CharField(label="Note", max_length=300, required=False)
+
+    def __init__(self, *args, **kwargs):
+        from apps.rules.models import RejectionReason
+
+        super().__init__(*args, **kwargs)
+        self.fields["reason"].queryset = RejectionReason.objects.filter(is_active=True, is_system=False)
+        _style(self)
+        self.fields["text"].widget.attrs["placeholder"] = "Note for the record (optional)"
+
+
+class ContactForm(forms.ModelForm):
+    """MR10006: contact details edited directly on the profile."""
+
+    class Meta:
+        model = Member
+        fields = ["phone_mobile", "phone_home", "email", "address_line1", "address_line2", "parish"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["parish"].choices = [("", "—")] + PARISHES
+        _style(self)
+
+
+class SrnRequestForm(forms.Form):
+    """SR10001: the applicant has no TRN that can be validated."""
+
+    first_name = forms.CharField(max_length=60)
+    middle_name = forms.CharField(max_length=60, required=False)
+    last_name = forms.CharField(max_length=60)
+    dob = forms.DateField(label="Date of birth", widget=DateInput())
+    gender = forms.ChoiceField(choices=[("F", "Female"), ("M", "Male")])
+    reason = forms.CharField(max_length=300, label="Why there is no validated TRN")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style(self)
+
+
+class InteractionForm(forms.Form):
+    """Staff-recorded contact (IL10001)."""
+
+    kind = forms.ChoiceField(choices=[("visit", "Counter visit"), ("call", "Telephone call"), ("email", "E-mail"), ("note", "Note")])
+    summary = forms.CharField(max_length=400, widget=forms.TextInput(attrs={"placeholder": "What happened"}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style(self)

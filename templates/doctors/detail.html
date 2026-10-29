@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">{{ doctor }}</h1>
+<p class="text-sm text-slate-500 mb-4">{{ doctor.get_status_display }}{% if doctor.confirmed_with_mcj_at %} · confirmed with the Medical Council {{ doctor.confirmed_with_mcj_at|date:"j M Y" }}{% endif %}</p>
+<div class="grid lg:grid-cols-2 gap-5">
+<form method="post" class="card">{% csrf_token %}<div class="card-h"><h2>Profile</h2></div><div class="card-b grid grid-cols-2 gap-3">
+{% for f in form %}<div><label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}</div>{% endfor %}
+<div class="col-span-2"><button class="btn-secondary">Save profile</button></div></div></form>
+<div class="card"><div class="card-h"><h2>Applications certified</h2></div><table class="tbl"><tbody>{% for a in apps %}<tr><td><a class="font-mono" href="{% url 'members:application' a.tracking_number %}">{{ a.tracking_number }}</a></td><td>{{ a.applicant_name }}</td><td>{% include "_status.html" with s=a.status %}</td></tr>{% empty %}<tr><td class="text-slate-500">None in this system yet.</td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endblock %}

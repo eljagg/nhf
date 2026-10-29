@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">Temporary roles</h1>
+<p class="text-sm text-slate-600 mb-4">Grant a role for a fixed period — cover for leave, a busy month-end, a one-off approval. Access ends automatically at expiry and every grant is audited.</p>
+<div class="grid lg:grid-cols-[22rem_1fr] gap-4">
+  <form method="post" class="card card-b space-y-3">{% csrf_token %}
+    {% for f in form %}<div><label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>{% endfor %}
+    <button class="btn-primary">Grant</button>
+  </form>
+  <div class="card overflow-x-auto"><table class="tbl"><thead><tr><th>User</th><th>Role</th><th>From</th><th>Until</th><th>Reason</th><th>Granted by</th><th></th></tr></thead><tbody>
+  {% for g in grants %}<tr><td>{{ g.user.display_name }}</td><td><span class="b-brand">{{ g.group.name }}</span></td><td>{{ g.starts_at }}</td><td>{{ g.expires_at }}</td><td>{{ g.reason }}</td><td>{{ g.granted_by.display_name }}</td><td>{% if g.is_active %}<form method="post" action="{% url 'accounts:revoke-temporary-role' g.pk %}">{% csrf_token %}<button class="btn-danger btn-sm">Revoke</button></form>{% else %}<span class="b-grey">ended</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="7" class="text-slate-500">No grants yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

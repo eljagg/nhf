@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+  <div>
+    <div class="flex flex-wrap items-center gap-2">
+      <h1 class="font-mono">{{ app.tracking_number }}</h1>
+      <span class="b-brand">{{ app.get_kind_display }}</span>
+      {% if app.is_online %}<span class="b-blue">Online</span>{% else %}<span class="b-grey">{{ app.get_channel_display }}</span>{% endif %}
+      {% include "_status.html" with s=app.status %}
+    </div>
+    <p class="text-sm text-slate-500 mt-1">Received {{ app.received_at|date:"j M Y H:i" }} at {{ app.centre }} · entered {{ app.entered_at|date:"j M H:i" }}{% if app.entered_by %} by {{ app.entered_by.display_name }}{% endif %}{% if app.portal_reference %} · portal ref. <span class="font-mono">{{ app.portal_reference }}</span>{% endif %}{% if app.assigned_to %} · assigned to {{ app.assigned_to.display_name }}{% endif %}</p>
+  </div>
+  <div class="flex gap-2">
+    {% if app.member %}<a class="btn-secondary" href="{% url 'members:member' app.member.member_number %}">Member {{ app.member.member_number }}</a>{% endif %}
+  </div>
+</div>
+
+{% if locked_by %}
+<div class="msg bg-amber-50 border-amber-300 text-amber-950 mb-4" role="alert"><strong>{{ locked_by.display_name }} is working on this record now.</strong> You can read it; saving and decisions are blocked until they leave it.</div>
+{% endif %}
+{% if app.status == "rejected" or app.status == "terminated" %}
+<div class="msg bg-red-50 border-red-200 text-red-900 mb-4"><strong>{{ app.get_status_display }}</strong> {{ app.decided_at|date:"j M Y H:i" }} by {{ app.decided_by.display_name }}: {{ app.rejection_reason.label }}{% if app.rejection_text %} — {{ app.rejection_text }}{% endif %}</div>
+{% elif app.status == "approved" %}
+<div class="msg bg-emerald-50 border-emerald-200 text-emerald-900 mb-4"><strong>Approved</strong> {{ app.decided_at|date:"j M Y H:i" }} by {{ app.decided_by.display_name }} · member <a href="{% url 'members:member' app.member.member_number %}">{{ app.member.member_number }}</a>{% for c in app.cards.all %} · card v{{ c.version_no }} {{ c.get_state_display|lower }} at {{ c.centre }}{% endfor %}</div>
+{% endif %}
+
+<div class="grid xl:grid-cols-[1fr_24rem] gap-5">
+  <div class="space-y-5 min-w-0">
+    {% include "members/_identity.html" %}
+
+    <form method="post" class="card" id="details">{% csrf_token %}
+      <div class="card-h"><h2>{% if app.kind == "change" %}Change form{% else %}Applicant details{% endif %}</h2>{% if can_process and not locked_by %}<button class="btn-primary btn-sm">Save and check</button>{% endif %}</div>
+      {% if app.kind == "change" %}
+      <div class="card-b border-b border-slate-100 bg-slate-50/60">
+        <div class="lbl">What does this change form change?</div>
+        <div class="flex flex-wrap gap-4 text-sm">
+          <label class="flex items-center gap-2">{{ form.change_contact }} Contact and collection details</label>
+          <label class="flex items-center gap-2">{{ form.change_conditions }} Medical conditions</label>
+          <label class="flex items-center gap-2">{{ form.change_guardian }} Guardian</label>
+          <label class="flex items-center gap-2">{{ form.change_identity }} Name / date of birth (from TRN service)</label>
+        </div>
+        <div class="mt-3 max-w-sm"><label class="lbl" for="id_reprint_reason">Card reprint</label>{{ form.reprint_reason }}<p class="text-xs text-slate-500 mt-1">A reprint is allowed only for a replacement or a name / date-of-birth change. A name or DOB change from the TRN service queues the reprint automatically.</p></div>
+      </div>
+      {% endif %}
+      <div class="card-b grid md:grid-cols-3 gap-4">
+        <div><label class="lbl" for="id_phone_mobile">Mobile</label>{{ form.phone_mobile }}</div>
+        <div><label class="lbl" for="id_phone_home">Home phone</label>{{ form.phone_home }}</div>
+        <div><label class="lbl" for="id_email">E-mail</label>{{ form.email }}{% for e in form.email.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>
+        <div class="md:col-span-2"><label class="lbl" for="id_address_line1">Address</label>{{ form.address_line1 }}</div>
+        <div><label class="lbl" for="id_parish">Parish</label>{{ form.parish }}</div>
+        <div class="md:col-span-2"><label class="lbl" for="id_address_line2">Address (line 2)</label>{{ form.address_line2 }}</div>
+        <div><label class="lbl" for="id_collection_centre">Card collection centre</label>{{ form.collection_centre }}</div>
+      </div>
+      <fieldset class="card-b border-t border-slate-100 grid md:grid-cols-4 gap-4 {% for f in outcome.findings %}{% if f.rule == 'BR10004' %}bg-red-50/50{% endif %}{% endfor %}">
+        <legend class="sr-only">Guardian</legend>
+        <div class="md:col-span-4 text-sm font-semibold">Parent or guardian <span class="font-normal text-slate-500">— required for applicants under 18</span></div>
+        <div><label class="lbl" for="id_guardian_name">Full name</label>{{ form.guardian_name }}</div>
+        <div><label class="lbl" for="id_guardian_relationship">Relationship</label>{{ form.guardian_relationship }}</div>
+        <div><label class="lbl" for="id_guardian_trn">Guardian's TRN</label>{{ form.guardian_trn }}{% for e in form.guardian_trn.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>
+        <div><label class="lbl" for="id_guardian_phone">Guardian's phone</label>{{ form.guardian_phone }}</div>
+      </fieldset>
+      <div class="card-b border-t border-slate-100 grid md:grid-cols-3 gap-4">
+        <div><label class="lbl" for="id_doctor_mcj">Certifying doctor — MCJ no.</label>{{ form.doctor_mcj }}</div>
+        <div class="md:col-span-2"><label class="lbl" for="id_referring_doctor_name">Doctor's name (as on form)</label>{{ form.referring_doctor_name }}
+          {% if app.doctor %}<p class="text-xs mt-1">{% if app.doctor.status == "confirmed" %}<span class="b-green">In NHF Doctors register</span> {{ app.doctor }}{% elif app.doctor.status == "pending" %}<span class="b-amber">Awaiting MCJ confirmation</span>{% else %}<span class="b-red">Not confirmed by MCJ</span>{% endif %}</p>{% endif %}</div>
+      </div>
+      <div class="card-b border-t border-slate-100">
+        <div class="text-sm font-semibold mb-2">Medical conditions certified on the form</div>
+        {% if can_conditions %}
+        <div class="grid md:grid-cols-2 gap-x-6 gap-y-1">
+          {% for r in condition_rows %}
+          <div class="flex items-center justify-between gap-2 py-1 border-b border-slate-50">
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="cond_{{ r.c.pk }}" {% if r.checked %}checked{% endif %} {% if not can_process or locked_by %}disabled{% endif %}> {{ r.c.name }}{% if r.c.sex_restriction %} <span class="text-[0.65rem] text-slate-500">({{ r.c.sex_restriction }} only)</span>{% endif %}</label>
+            <select name="sev_{{ r.c.pk }}" class="inp w-28 py-0.5 text-xs" aria-label="Severity of {{ r.c.name }}" {% if not can_process or locked_by %}disabled{% endif %}>{% for v, l in severities %}<option value="{{ v }}" {% if r.severity == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<p class="text-sm text-slate-500">Hidden for your role — medical conditions are shown only to staff who process eligibility.</p>{% endif %}
+      </div>
+      {% if can_process and not locked_by %}<div class="px-4 pb-4"><button class="btn-primary">Save and check</button></div>{% endif %}
+    </form>
+
+    {% if can_process and not app.is_srn and validation.status != "valid" %}
+    <form method="post" action="{% url 'members:request-srn' app.tracking_number %}" id="srn" class="card">{% csrf_token %}
+      <div class="card-h"><h2>Request a Special Registration Number</h2><span class="b-amber">Manager approval</span></div>
+      <div class="card-b grid md:grid-cols-3 gap-3">
+        <div><label class="lbl" for="srn_first_name">First name</label>{{ srn_form.first_name }}</div>
+        <div><label class="lbl" for="srn_middle_name">Middle name</label>{{ srn_form.middle_name }}</div>
+        <div><label class="lbl" for="srn_last_name">Last name</label>{{ srn_form.last_name }}</div>
+        <div><label class="lbl" for="srn_dob">Date of birth</label>{{ srn_form.dob }}</div>
+        <div><label class="lbl" for="srn_gender">Gender</label>{{ srn_form.gender }}</div>
+        <div><label class="lbl" for="srn_reason">{{ srn_form.reason.label }}</label>{{ srn_form.reason }}</div>
+        <div><button class="btn-secondary">Request SRN</button></div>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+
+  <aside class="space-y-5">
+    <div class="card">
+      <div class="card-h"><h2>Checks</h2><span class="text-xs text-slate-500">Rules engine</span></div>
+      <div class="card-b space-y-2">
+        {% for f in outcome.findings %}
+          <div class="finding-{{ f.level }}"><span class="font-mono text-[0.7rem] opacity-70 pt-0.5">{{ f.rule }}</span><span>{{ f.message }}</span></div>
+        {% empty %}<div class="finding-info">All checks pass.</div>{% endfor %}
+        {% if outcome.programmes %}<div class="text-sm pt-2"><span class="text-slate-500">Will enrol in:</span> {% for p in outcome.programmes %}<span class="b-brand">{{ p.name }}</span> {% endfor %}</div>{% endif %}
+      </div>
+    </div>
+
+    {% if can_process and not locked_by %}
+    <div class="card">
+      <div class="card-h"><h2>Decision</h2></div>
+      <div class="card-b space-y-4">
+        <form method="post" action="{% url 'members:approve' app.tracking_number %}">{% csrf_token %}
+          <button class="btn-primary w-full" {% if not outcome.ok or app.status != "ready" %}disabled{% endif %}>Approve{% if app.kind == "new" %} and issue member number{% endif %}</button>
+          {% if not outcome.ok %}<p class="text-xs text-slate-500 mt-1">Resolve the red checks first.</p>{% elif app.status != "ready" %}<p class="text-xs text-slate-500 mt-1">Save the form to re-run the checks.</p>{% endif %}
+        </form>
+        <form method="post" action="{% url 'members:reject' app.tracking_number %}" class="space-y-2 border-t border-slate-100 pt-3">{% csrf_token %}
+          <label class="lbl" for="rej_reason">Reject — reason</label>{{ reject_form.reason }}
+          {{ reject_form.text }}
+          <button class="btn-danger w-full" data-confirm="Reject this application? The applicant is notified by SMS.">Reject</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card" id="log">
+      <div class="card-h"><h2>Interaction log</h2><span class="text-xs text-slate-500">append-only</span></div>
+      <ol class="divide-y divide-slate-100">
+        {% for i in interactions %}
+        <li class="px-4 py-2.5 text-sm">
+          <div class="flex justify-between gap-2"><span class="text-xs text-slate-500">{{ i.at|date:"j M H:i:s" }} · {{ i.actor.display_name|default:"System" }}</span><span class="b-grey">{{ i.get_kind_display }}</span></div>
+          <p class="mt-0.5">{{ i.summary }}</p>
+          {% for n in i.notes.all %}<p class="mt-1 ml-3 pl-2 border-l-2 border-brand-200 text-slate-700">{{ n.body }} <span class="text-xs text-slate-500">— {{ n.author.display_name }}, {{ n.at|date:"j M H:i" }}</span></p>{% endfor %}
+          {% if can_process %}<details class="mt-1"><summary class="text-xs text-brand-700 cursor-pointer">Add note</summary><form method="post" action="{% url 'interactions:add-note' i.pk %}" class="flex gap-2 mt-1">{% csrf_token %}<input class="inp" name="body" required aria-label="Note"><button class="btn-secondary btn-sm">Add</button></form></details>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </aside>
+</div>
+{% if can_process and app.is_open and not locked_by %}<div hx-post="{% url 'members:heartbeat' app.tracking_number %}" hx-trigger="every 30s" hx-swap="none"></div>{% endif %}
+{% endblock %}

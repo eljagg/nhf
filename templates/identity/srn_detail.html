@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">SRN request — {{ issue.full_name }}</h1>
+<p class="text-sm text-slate-500 mb-4">Requested {{ issue.created_at|date:"j M Y H:i" }} by {{ issue.requested_by.display_name }} · {{ issue.get_status_display }}</p>
+<div class="grid lg:grid-cols-2 gap-5">
+<div class="card"><div class="card-h"><h2>Applicant</h2></div><div class="card-b"><dl class="kv"><dt>Name</dt><dd>{{ issue.full_name }}</dd><dt>Date of birth</dt><dd>{{ issue.dob|date:"j M Y" }}</dd><dt>Gender</dt><dd>{{ issue.get_gender_display }}</dd><dt>Reason</dt><dd>{{ issue.reason }}</dd>{% if issue.srn %}<dt>SRN</dt><dd class="font-mono text-lg">{{ issue.srn }}</dd>{% endif %}{% if issue.decision_note %}<dt>Decision note</dt><dd>{{ issue.decision_note }}</dd>{% endif %}</dl>
+{% for a in apps %}<p class="text-sm mt-3">Application <a class="font-mono" href="{% url 'members:application' a.tracking_number %}">{{ a.tracking_number }}</a> ({{ a.get_status_display|lower }})</p>{% endfor %}</div></div>
+<div class="card"><div class="card-h"><h2>Duplicate check</h2>{% if issue.duplicate_check.clear %}<span class="b-green">No match</span>{% else %}<span class="b-red">Possible duplicate</span>{% endif %}</div><div class="card-b text-sm space-y-2">
+  <p>Members with the same name and date of birth: {% for m in issue.duplicate_check.members %}<a class="font-mono" href="{% url 'members:member' m.member_number %}">{{ m.member_number }}</a> {% empty %}none{% endfor %}</p>
+  <p>TRN register entries with the same name and date of birth: {% for t in issue.duplicate_check.trn_register %}<span class="font-mono">{{ t }}</span> {% empty %}none{% endfor %}</p>
+  <p>Other open SRN requests: {{ issue.duplicate_check.open_requests|length }}</p>
+  <p class="text-xs text-slate-500">Checked {{ issue.duplicate_check.checked_at|slice:":16" }}; repeated at approval.</p>
+</div></div>
+</div>
+{% if can_approve %}
+<form method="post" action="{% url 'identity:srn-decide' issue.pk %}" class="card card-b mt-5 flex flex-wrap gap-3 items-end">{% csrf_token %}
+  <div class="flex-1 min-w-72"><label class="lbl" for="note">Note (required to decline)</label><input id="note" class="inp" name="note"></div>
+  <button class="btn-primary" name="decision" value="approve">Approve and issue SRN</button>
+  <button class="btn-danger" name="decision" value="decline">Decline</button>
+</form>
+<p class="text-xs text-slate-500 mt-2">The person who requested an SRN cannot approve it.</p>
+{% endif %}
+{% endblock %}

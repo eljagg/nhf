@@ -1,0 +1,11 @@
+<div id="screen-result" class="card" {% if validation and not validation.is_done %}hx-get="{% url 'identity:screen-result' validation.pk %}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+  <div class="card-h"><h2>TRN {{ validation.trn }}</h2>
+    {% if validation.status == "pending" %}<span class="b-blue">Checking…</span>{% elif validation.status == "valid" %}<span class="b-green">Valid</span>{% elif validation.status == "invalid" %}<span class="b-red">Not found at the Tax Office</span>{% else %}<span class="b-amber">Service unavailable</span>{% endif %}</div>
+  <div class="card-b">
+    {% if validation.status == "valid" %}{% with p=validation.payload %}
+      <dl class="kv"><dt>Name</dt><dd>{{ p.first_name }} {{ p.middle_name }} {{ p.last_name }}</dd><dt>Date of birth</dt><dd>{{ p.dob }}</dd><dt>Gender</dt><dd>{{ p.gender }}</dd><dt>Address</dt><dd>{{ p.address_line1 }} {{ p.address_line2 }}</dd></dl>
+    {% endwith %}{% elif validation.status == "unavailable" %}<p class="text-sm">{{ validation.message }}</p>{% elif validation.status == "pending" %}<p class="text-sm text-slate-500">Waiting for the TRN service…</p>{% endif %}
+    {% if validation.is_done %}<div class="mt-4 text-sm">{% if member %}Already a member: <a href="{% url 'members:member' member.member_number %}">{{ member.full_name }} · {{ member.member_number }}</a>{% else %}Not an NHF member.{% endif %}</div>{% endif %}
+    <p class="text-[0.7rem] text-slate-400 mt-3">Screening call logged {{ validation.created_at|date:"j M H:i:s" }}; nothing is stored against a member.</p>
+  </div>
+</div>

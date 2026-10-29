@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-4">Special Registration Numbers</h1>
+<div class="card mb-5"><div class="card-h"><h2>Awaiting approval</h2></div><table class="tbl"><thead><tr><th>Requested</th><th>Applicant</th><th>DOB</th><th>Reason</th><th>Duplicate check</th><th>By</th></tr></thead><tbody>
+{% for i in open_issues %}<tr><td>{{ i.created_at|timesince }} ago</td><td><a href="{% url 'identity:srn-detail' i.pk %}">{{ i.full_name }}</a></td><td>{{ i.dob|date:"j M Y" }}</td><td>{{ i.reason }}</td><td>{% if i.duplicate_check.clear %}<span class="b-green">Clear</span>{% else %}<span class="b-red">Possible match</span>{% endif %}</td><td>{{ i.requested_by.display_name }}</td></tr>{% empty %}<tr><td colspan="6" class="text-slate-500">Nothing waiting.</td></tr>{% endfor %}</tbody></table></div>
+<div class="card"><div class="card-h"><h2>Recent decisions</h2></div><table class="tbl"><thead><tr><th>Decided</th><th>Applicant</th><th>Result</th><th>SRN</th><th>By</th></tr></thead><tbody>
+{% for i in recent %}<tr><td>{{ i.decided_at|date:"j M Y H:i" }}</td><td><a href="{% url 'identity:srn-detail' i.pk %}">{{ i.full_name }}</a></td><td>{{ i.get_status_display }}</td><td class="font-mono">{{ i.srn|default:"—" }}</td><td>{{ i.decided_by.display_name }}</td></tr>{% empty %}<tr><td colspan="5" class="text-slate-500">None yet.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

@@ -1,0 +1,7 @@
+{% extends "accounts/_shell.html" %}
+{% block box %}
+<h1>Two-step sign-in</h1>
+<p class="text-sm text-slate-600 mt-2">Enter the six-digit code from your authenticator app.</p>
+{% if error %}<div class="msg bg-red-50 border-red-200 text-red-900 my-3">{{ error }}</div>{% endif %}
+<form method="post" class="mt-4 flex gap-2">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><input class="inp inp-lg" name="token" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required autofocus aria-label="Six-digit code"><button class="btn-primary">Verify</button></form>
+{% endblock %}

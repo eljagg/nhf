@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-end justify-between mb-4"><h1>NHF Doctors register</h1><form class="flex gap-2"><input class="inp w-72" name="q" value="{{ q }}" placeholder="MCJ no., name or practice" aria-label="Search doctors"><button class="btn-secondary">Search</button></form></div>
+<div class="card overflow-x-auto"><table class="tbl"><thead><tr><th>MCJ no.</th><th>Name</th><th>Specialty</th><th>Practice</th><th>Parish</th><th>Status</th></tr></thead><tbody>
+{% for d in page %}<tr><td><a class="font-mono" href="{% url 'doctors:detail' d.mcj_number %}">{{ d.mcj_number }}</a></td><td>{{ d.title }} {{ d.first_name }} {{ d.last_name }}</td><td>{{ d.specialty }}</td><td>{{ d.practice_name }}</td><td>{{ d.get_parish_display }}</td><td>{% if d.status == "confirmed" %}<span class="b-green">Confirmed</span>{% elif d.status == "pending" %}<span class="b-amber">Awaiting MCJ</span>{% else %}<span class="b-red">Not confirmed</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="6">No doctors match.</td></tr>{% endfor %}
+</tbody></table>{% include "_pager.html" %}</div>
+{% endblock %}

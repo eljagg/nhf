@@ -1,0 +1,15 @@
+{% extends "accounts/_shell.html" %}
+{% block title %}Sign in{% endblock %}
+{% block box %}
+<h1 class="mb-1">Sign in</h1>
+<p class="text-sm text-slate-500 mb-6">Use your NHF staff account.</p>
+{% if idle %}<div class="msg bg-amber-50 border-amber-200 text-amber-900 mb-4">You were signed out after a period of inactivity.</div>{% endif %}
+{% if form.non_field_errors %}<div class="msg bg-red-50 border-red-200 text-red-900 mb-4">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+<form method="post" class="space-y-4">{% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.GET.next }}">
+  <div><label class="lbl" for="id_username">Username</label><input class="inp" id="id_username" name="username" autocomplete="username" autofocus required value="{{ form.username.value|default:'' }}"></div>
+  <div><label class="lbl" for="id_password">Password</label><input class="inp" id="id_password" type="password" name="password" autocomplete="current-password" required></div>
+  <button class="btn-primary w-full">Sign in</button>
+</form>
+<p class="text-xs text-slate-500 mt-6">Active Directory and single sign-on are connected during implementation on NHF's network.</p>
+{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-end justify-between mb-1"><h1>Print queue</h1><a class="text-sm" href="?centre=all">All centres</a></div>
+<p class="text-sm text-slate-600 mb-4">Only cards flagged for printing appear here. Each row is what ID Works reads from the card-production feed: cleaned name, member number and the encoded stripe. Printing, swipe verification and dispatch with signature are the next sprint (A2).</p>
+<div class="card overflow-x-auto"><table class="tbl"><thead><tr><th>Queued</th><th>Member no.</th><th>Print name</th><th>Version</th><th>Reason</th><th>Centre</th><th>PHI</th><th>Track 2</th></tr></thead><tbody>
+{% for c in page %}<tr><td>{{ c.queued_at|date:"j M H:i" }}</td><td><a class="font-mono" href="{% url 'members:member' c.member.member_number %}">{{ c.member.member_number }}</a></td><td class="font-mono">{{ c.print_name }}</td><td>v{{ c.version_no }}</td><td>{{ c.get_reason_display }}</td><td>{{ c.centre }}</td><td>{% if c.phi_reconciled_at %}<span class="b-green">reconciled</span>{% else %}<span class="b-amber">pending</span>{% endif %}</td><td class="font-mono text-xs">{{ c.track2 }}</td></tr>{% empty %}<tr><td colspan="8" class="text-slate-500">Queue empty.</td></tr>{% endfor %}
+</tbody></table>{% include "_pager.html" %}</div>
+{% endblock %}

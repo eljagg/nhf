@@ -1,0 +1,10 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Sign in{% endblock %} · {{ PRODUCT_NAME }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="min-h-screen">{% block public %}{% endblock %}</body>
+</html>

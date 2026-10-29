@@ -1,0 +1,13 @@
+{
+  "name": "nhf-member-registration-frontend",
+  "private": true,
+  "scripts": {
+    "build": "tailwindcss -i ./frontend/app.css -o ./static/css/app.css --minify && cp node_modules/htmx.org/dist/htmx.min.js static/js/htmx.min.js",
+    "watch": "tailwindcss -i ./frontend/app.css -o ./static/css/app.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "tailwindcss": "^4.1.0",
+    "htmx.org": "^2.0.4"
+  }
+}
