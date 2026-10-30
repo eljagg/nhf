@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4"><div><h1>Member IDs to renew</h1><p class="text-sm text-slate-500">Ask for a current government ID at the member's next visit and update their identity document.</p></div>
+<div class="flex gap-2"><a class="{% if show == 'expired' %}btn-primary{% else %}btn-secondary{% endif %}" href="?show=expired">Expired ({{ counts.expired }})</a><a class="{% if show == 'soon' %}btn-primary{% else %}btn-secondary{% endif %}" href="?show=soon">Expiring by {{ soon|date:"j M Y" }} ({{ counts.soon }})</a></div></div>
+<div class="card overflow-x-auto"><table class="tbl"><thead><tr><th>Member</th><th>Name</th><th>ID type</th><th>Issued</th><th>Expiry</th><th>Mobile</th></tr></thead><tbody>
+{% for m in page %}<tr><td><a class="font-mono" href="{% url 'members:member' m.member_number %}">{{ m.member_number }}</a></td><td>{{ m.full_name }}</td><td>{{ m.get_id_type_display }}</td><td>{{ m.id_issue_date|date:"j M Y"|default:"—" }}</td><td>{% if m.id_expired %}<span class="b-red">{{ m.id_expiry|date:"j M Y" }}</span>{% else %}<span class="b-amber">{{ m.id_expiry|date:"j M Y" }}</span>{% endif %}</td><td>{{ m.phone_mobile|default:"—" }}</td></tr>{% empty %}<tr><td colspan="6" class="text-slate-500">None.</td></tr>{% endfor %}
+</tbody></table>{% include "_pager.html" %}</div>
+{% endblock %}

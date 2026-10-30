@@ -8,6 +8,7 @@ urlpatterns = [
     path("new/without-trn/", views.start_without_trn, name="start-without-trn"),
     path("applications/", views.applications, name="applications"),
     path("search/", views.search, name="search"),
+    path("expired-ids/", views.expired_ids, name="expired-ids"),
     path("applications/<str:tracking>/", views.application, name="application"),
     path("applications/<str:tracking>/identity/", views.identity_panel, name="identity-panel"),
     path("applications/<str:tracking>/heartbeat/", views.heartbeat, name="heartbeat"),

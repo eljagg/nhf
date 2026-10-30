@@ -41,6 +41,19 @@ class Member(models.Model):
     nis_number = models.CharField("NIS number", max_length=12, blank=True, db_index=True, help_text="National Insurance Scheme number (optional).")
     consent_at = models.DateTimeField(null=True, blank=True, help_text="When the member consented to processing (Data Protection Act 2020).")
     consent_version = models.CharField(max_length=20, blank=True)
+    ID_TYPES = [
+        ("nids", "National ID (NIDS)"),
+        ("drivers", "Driver's licence"),
+        ("passport", "Passport"),
+        ("voter", "Voter ID (EOJ)"),
+        ("birth", "Birth certificate (minors)"),
+        ("other", "Other government ID"),
+    ]
+    id_type = models.CharField("ID type", max_length=10, choices=ID_TYPES, blank=True)
+    id_number = EncryptedTextField("ID number", blank=True, help_text="Stored encrypted.")
+    id_issue_date = models.DateField("ID issue date", null=True, blank=True)
+    id_expiry = models.DateField("ID expiry", null=True, blank=True, db_index=True)
+    id_checked_at = models.DateTimeField(null=True, blank=True)
     processing_restricted_at = models.DateTimeField(
         null=True, blank=True, help_text="Set by the DPO when the member objects to / asks to restrict processing (Data Protection Act 2020)."
     )
@@ -76,6 +89,15 @@ class Member(models.Model):
     def full_name(self):
         """Display name."""
         return " ".join(p for p in [self.first_name, self.middle_name, self.last_name] if p)
+
+    @property
+    def id_expired(self):
+        return bool(self.id_expiry and self.id_expiry < timezone.localdate())
+
+    @property
+    def id_number_masked(self):
+        value = self.id_number or ""
+        return ("•" * max(len(value) - 4, 0) + value[-4:]) if value else ""
 
     def age(self, when=None):
         """Age in whole years."""

@@ -6,6 +6,7 @@
     <h1 class="mb-1">{{ t.display_name }}</h1>
     <p class="text-sm text-slate-500"><span class="font-mono">{{ t.username }}</span>{% if t.job_title %} · {{ t.job_title }}{% endif %}{% if t.centre %} · {{ t.centre }}{% endif %} · {{ t.get_source_display }}</p>
     <div class="flex flex-wrap gap-2 mt-2">{% include "accounts/_staff_status.html" %}{% for r in roles %}<span class="b-brand">{{ r }}</span>{% endfor %}</div>
+    {% if t.id_expired %}<div class="finding-warning mt-3">The {{ t.get_id_type_display|default:"ID" }} on file expired on {{ t.id_expiry|date:"j M Y" }}. Ask for the renewed ID and update the record.</div>{% endif %}
     {% if status == "suspended" %}<div class="finding-error mt-3">Suspended {{ t.suspended_at|date:"j M Y, H:i" }} by {{ t.suspended_by.display_name|default:"—" }}{% if t.suspended_until %} until {{ t.suspended_until|date:"j M Y" }}{% else %} until reinstated{% endif %}: {{ t.suspension_reason }}</div>{% endif %}
   </div>
   <div class="flex flex-col gap-2 text-sm"><a class="btn-secondary" href="{% url 'security:activity' %}?user={{ t.pk }}">User activity</a></div>

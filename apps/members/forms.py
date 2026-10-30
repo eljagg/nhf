@@ -214,3 +214,32 @@ class InteractionForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style(self)
+
+
+class IdDocumentForm(forms.ModelForm):
+    """The government ID the member showed: type, number, issue and expiry dates."""
+
+    class Meta:
+        model = Member
+        fields = ["id_type", "id_number", "id_issue_date", "id_expiry"]
+        widgets = {"id_issue_date": forms.DateInput(attrs={"type": "date"}), "id_expiry": forms.DateInput(attrs={"type": "date"})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["id_number"].widget = forms.TextInput(attrs={"autocomplete": "off"})
+        _style(self)
+        self.fields["id_number"].widget.attrs["class"] = "inp font-mono"
+
+    def clean(self):
+        from django.utils import timezone
+
+        data = super().clean()
+        data["id_number"] = " ".join((data.get("id_number") or "").split()).upper()
+        if data["id_number"] and not data.get("id_type"):
+            self.add_error("id_type", "Choose the ID type.")
+        issued, expiry = data.get("id_issue_date"), data.get("id_expiry")
+        if issued and issued > timezone.localdate():
+            self.add_error("id_issue_date", "The issue date cannot be in the future.")
+        if issued and expiry and expiry <= issued:
+            self.add_error("id_expiry", "The expiry date must be after the issue date.")
+        return data

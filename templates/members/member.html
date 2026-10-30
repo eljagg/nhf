@@ -24,6 +24,15 @@
       <div class="px-4 pb-3 text-xs text-slate-500">Collection centre: {{ m.collection_centre }}. Any other change needs a change form.</div>
     </form>
 
+    <form method="post" class="card">{% csrf_token %}<input type="hidden" name="action" value="iddoc">
+      <div class="card-h"><h2>Identity document</h2>{% if m.id_expired %}<span class="b-red">Expired {{ m.id_expiry|date:"j M Y" }}</span>{% elif m.id_expiry %}<span class="b-green">Valid to {{ m.id_expiry|date:"j M Y" }}</span>{% else %}<span class="b-grey">Not recorded</span>{% endif %}</div>
+      {% if m.id_expired %}<div class="finding-warning mx-4 mt-3">The ID on file has expired. Ask for a current government ID at the next visit and update it here.</div>{% endif %}
+      <div class="card-b grid md:grid-cols-4 gap-4">
+        {% for f in id_form %}<div><label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>{% endfor %}
+        <div class="md:col-span-4">{% if can_process %}<button class="btn-secondary">Save identity document</button>{% endif %}{% if m.id_checked_at %} <span class="text-xs text-slate-500 ml-2">last checked {{ m.id_checked_at|date:"j M Y" }}</span>{% endif %}</div>
+      </div>
+    </form>
+
     <div class="card"><div class="card-h"><h2>Medical conditions</h2></div>
       {% if can_conditions %}<table class="tbl"><thead><tr><th>Condition</th><th>Severity</th><th>Certified by</th><th>On</th></tr></thead><tbody>
       {% for c in conditions %}<tr><td>{{ c.condition.name }}</td><td>{{ c.get_severity_display }}</td><td>{% if c.certified_by %}<a href="{% url 'doctors:detail' c.certified_by.mcj_number %}">{{ c.certified_by }}</a>{% endif %}</td><td>{{ c.certified_on|date:"j M Y" }}</td></tr>{% empty %}<tr><td colspan="4">None recorded.</td></tr>{% endfor %}

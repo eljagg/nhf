@@ -39,6 +39,15 @@ TEMPLATES = {
         "{who} now shows as '{status}' on the council register. Review before accepting further certifications.",
     ),
     "staff-suspended": ("Account suspended", "{who} was suspended by {by}: {reason}."),
+    "staff-id-expiry": (
+        "Your ID on file {state} {date}",
+        "Your {id_type} on file {state} on {date}. Bring the renewed ID to the application administrator so your staff record stays current.",
+    ),
+    "staff-ids-digest": ("Staff IDs to renew", "{count} staff ID(s) expired or expiring within {days} days: {names}."),
+    "member-ids-digest": (
+        "Member IDs to renew",
+        "{expired} member(s) have an expired ID on file and {soon} expire soon. Ask for a current ID at their next visit.",
+    ),
     "role-change-requested": ("Role change to approve", "{by} asked to {change} for {who}. Approve or reject it on their staff record."),
 }
 

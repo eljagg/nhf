@@ -61,6 +61,7 @@ def site(request):
                 _item("Home", "core:home", request),
                 _item("Applications", "members:applications", request, ("customer_care", "supervisor", "manager", "auditor")),
                 _item("Tracking search", "members:search", request, ("customer_care", "supervisor", "manager", "auditor")),
+                _item("Member IDs to renew", "members:expired-ids", request, ("customer_care", "supervisor", "manager")),
                 _item("Online Intake", "intake:queue", request, proc, online),
             ],
         ),

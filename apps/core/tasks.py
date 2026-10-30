@@ -24,3 +24,11 @@ def send_notification(notification_id):
         note.status = "sent"
     note.sent_at = timezone.now()
     note.save(update_fields=["status", "sent_at"])
+
+
+@shared_task
+def check_id_expiry():
+    """Daily: tell staff and supervisors about expired or soon-to-expire IDs."""
+    from .idexpiry import check_id_expiry as run
+
+    return run()

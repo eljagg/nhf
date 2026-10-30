@@ -13,7 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import Group
 from django.contrib.auth.views import PasswordChangeView, PasswordResetConfirmView, PasswordResetView
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -40,10 +40,11 @@ class LoginForm(AuthenticationForm):
 
 
 def _safe_next(request, default="core:home"):
+    """Where to go next: a validated same-site path, otherwise the default. Always a real URL path, never a route name."""
     nxt = request.POST.get("next") or request.GET.get("next")
     if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
         return nxt
-    return default
+    return resolve_url(default)
 
 
 def login_view(request):
@@ -185,7 +186,10 @@ def mfa_backup_codes(request):
     codes = request.session.pop("new_backup_codes", None)
     if not codes:
         return redirect("accounts:me")
-    return render(request, "accounts/mfa_backup_codes.html", {"codes": codes, "next": request.session.pop("after_backup_codes", "/")})
+    nxt = request.session.pop("after_backup_codes", "") or "/"
+    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()) or ":" in nxt.split("/")[0]:
+        nxt = "/"
+    return render(request, "accounts/mfa_backup_codes.html", {"codes": codes, "next": nxt})
 
 
 @require_POST

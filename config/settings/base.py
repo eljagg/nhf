@@ -75,7 +75,7 @@ PRODUCT_NAME = env("PRODUCT_NAME", default="Registry Platform")
 BUILT_BY = env("BUILT_BY", default="")
 EDITION_NAME = "Member Registration"
 CLIENT_NAME = "National Health Fund"
-VERSION = "0.2.5"
+VERSION = "0.2.6"
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -201,6 +201,7 @@ CELERY_BEAT_SCHEDULE = {
     "expire-temporary-roles": {"task": "apps.accounts.tasks.expire_temporary_roles", "schedule": timedelta(minutes=15)},
     "retention-sweep": {"task": "apps.privacy.tasks.retention_sweep", "schedule": timedelta(hours=24)},
     "directory-sync": {"task": "apps.directory.tasks.sync_directory_users", "schedule": timedelta(hours=1)},
+    "id-expiry-check": {"task": "apps.core.tasks.check_id_expiry", "schedule": timedelta(hours=24)},
     "practitioner-recheck": {"task": "apps.doctors.tasks.recheck_registers", "schedule": timedelta(hours=24)},
 }
 

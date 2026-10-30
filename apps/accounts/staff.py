@@ -27,8 +27,17 @@ class StaffForm(forms.ModelForm):
 
     class Meta:
         model = get_user_model()
-        fields = ["first_name", "last_name", "email", "job_title", "phone", "staff_number", "centre", "id_type", "id_number", "id_expiry"]
-        widgets = {"id_expiry": forms.DateInput(attrs={"type": "date"})}
+        fields = ["first_name", "last_name", "email", "job_title", "phone", "staff_number", "centre", "id_type", "id_number", "id_issue_date", "id_expiry"]
+        widgets = {"id_issue_date": forms.DateInput(attrs={"type": "date"}), "id_expiry": forms.DateInput(attrs={"type": "date"})}
+
+    def clean(self):
+        data = super().clean()
+        issued, expiry = data.get("id_issue_date"), data.get("id_expiry")
+        if issued and expiry and expiry <= issued:
+            self.add_error("id_expiry", "The expiry date must be after the issue date.")
+        if issued and issued > timezone.localdate():
+            self.add_error("id_issue_date", "The issue date cannot be in the future.")
+        return data
 
     def __init__(self, *args, editor=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -77,6 +86,8 @@ def staff_list(request):
         qs = qs.filter(suspended_at__isnull=False).filter(Q(suspended_until__isnull=True) | Q(suspended_until__gt=now))
     elif state == "disabled":
         qs = qs.filter(is_active=False)
+    elif state == "id_expired":
+        qs = qs.filter(id_expiry__lt=timezone.localdate(), is_active=True)
     elif state == "no_id":
         qs = qs.filter(Q(id_number="") | Q(id_document__isnull=True), is_active=True)
     page = Paginator(qs, 40).get_page(request.GET.get("page"))

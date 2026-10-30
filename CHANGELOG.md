@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.2.6 — 30 October 2026 — sign-in fix, NIS for everyone, ID expiry tracking
+
+- **Fixed:** after two-step enrolment, *I have saved them — continue* did nothing (the link pointed at an internal route name instead of a page). It now goes to Home. Tested by clicking through as sup.henry, mgr.morgan, backoffice.lee and cc.walker.
+- **NIS number for every person** in the demo: all 5,000 members and open applications have a unique NIS number in the configured format. Existing deployments are filled in on the next deploy, with no reseed needed.
+- **ID issue and expiry dates**: members get an *Identity document* card (ID type, number (encrypted), issue date, expiry date); staff records gain the issue date. Dates are checked (issue not in the future, expiry after issue).
+- **Expired IDs**: a red banner on the member record; a *Member IDs to renew* list (expired / expiring soon); daily digest to supervisors. Staff whose own ID is expiring or expired are told directly (at most weekly), with a daily list to application administrators; *Staff → ID expired* filter. Warning period: parameter `id-expiry-warning-days` (default 30).
+
 ## v0.2.5 — 29 October 2026 — build fix
 
 - Fixed: the Docker image build failed at `collectstatic` because the production check for `FIELD_ENCRYPTION_KEY` (added in v0.2.3) also ran during the build, where hosting variables are not available. The check now runs when the app starts, not while the image is built. A test runs the Dockerfile's build command with no variables so this cannot return.

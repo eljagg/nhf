@@ -37,6 +37,7 @@ class User(AbstractUser):
     photo = models.ForeignKey("core.StoredImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     id_type = models.CharField("ID type", max_length=10, choices=ID_TYPES, blank=True)
     id_number = EncryptedTextField("ID number", blank=True, help_text="Stored encrypted.")
+    id_issue_date = models.DateField("ID issue date", null=True, blank=True)
     id_expiry = models.DateField("ID expiry", null=True, blank=True)
     id_document = models.ForeignKey("core.StoredImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="ID picture")
     suspended_at = models.DateTimeField(null=True, blank=True)
@@ -70,6 +71,10 @@ class User(AbstractUser):
     def is_suspended(self):
         """True while a suspension is in force (an end date, if set, lifts it automatically)."""
         return bool(self.suspended_at and (self.suspended_until is None or self.suspended_until > timezone.now()))
+
+    @property
+    def id_expired(self):
+        return bool(self.id_expiry and self.id_expiry < timezone.localdate())
 
     @property
     def id_number_masked(self):

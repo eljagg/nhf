@@ -46,6 +46,7 @@ PARAMETER_LIMITS = {
     "retention-rejected-days": (365, 3650),
     "directory-recheck-minutes": (5, 60),
     "register-recheck-days": (1, 90),
+    "id-expiry-warning-days": (7, 120),
     "password-max-age-days": (0, 365),
     "password-history-count": (3, 24),
     "alert-failed-logins": (3, 20),
@@ -59,7 +60,7 @@ PARAMETER_LIMITS = {
     "breach-report-hours": (1, 72),
 }
 # Only application administrators and the DPO may change these in the back office.
-SECURITY_PARAMETERS = set(PARAMETER_LIMITS) - {"retention-rejected-days", "register-recheck-days", "dsr-days"}
+SECURITY_PARAMETERS = set(PARAMETER_LIMITS) - {"retention-rejected-days", "register-recheck-days", "dsr-days", "id-expiry-warning-days"}
 
 
 class Parameter(models.Model):
@@ -84,6 +85,7 @@ class Parameter(models.Model):
             15,
             "Signed-in Active Directory users are re-checked against AD this often; disabled accounts are signed out (0 turns it off).",
         ),
+        "id-expiry-warning-days": (30, "Staff and supervisors are told this many days before an ID on file expires."),
         "register-recheck-days": (30, "Confirmed doctors and nurses are re-checked against their council register this often (nightly batch)."),
         "work-lock-seconds": (90, "A record is shown as being worked on while the agent's heartbeat is newer than this (OR10010)."),
         "counter-target-minutes": (15, "Target time from entry to dispatch at the counter (PF10001)."),

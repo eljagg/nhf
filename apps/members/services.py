@@ -572,3 +572,16 @@ def update_contact(member, *, user, data):
         log(f"Contact details updated ({', '.join(changed)})", member=member, event="member.contact_updated", actor=user)
         audit.record("member.contact_updated", member, f"Contact details updated: {', '.join(changed)}", actor=user, fields=changed)
     return changed
+
+
+def update_id_document(member, *, user, data):
+    """Record the ID the member presented. The number is encrypted; changes are logged (without the number)."""
+    changed = [k for k in ("id_type", "id_number", "id_issue_date", "id_expiry") if data.get(k) != getattr(member, k)]
+    if changed:
+        for k in changed:
+            setattr(member, k, data.get(k))
+        member.id_checked_at = timezone.now()
+        member.save()
+        log(f"Identity document updated ({', '.join(changed)})", member=member, event="member.id_updated", actor=user)
+        audit.record("member.id_updated", member, f"Identity document updated: {', '.join(changed)}", actor=user, fields=changed)
+    return changed

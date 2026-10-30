@@ -1,6 +1,7 @@
 """Counter screens: start, application (counter page), member profile, applications list, tracking search."""
 
 import re
+from datetime import timedelta
 
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -21,7 +22,7 @@ from apps.rules.engine import active_conditions
 from apps.rules.models import Programme, RejectionReason
 
 from . import services
-from .forms import ApplicationForm, ContactForm, InteractionForm, RecheckForm, RejectForm, SrnRequestForm, StartForm
+from .forms import ApplicationForm, ContactForm, IdDocumentForm, InteractionForm, RecheckForm, RejectForm, SrnRequestForm, StartForm
 from .identifiers import normalise_nis
 from .models import SEVERITIES, Application, Member
 
@@ -365,7 +366,15 @@ def member(request, member_number):
     """Member profile (MR10014–MR10016)."""
     m = get_object_or_404(Member.objects.select_related("collection_centre", "registered_centre"), member_number=member_number)
     # The form gets its own copy: validation writes into its instance, and update_contact compares against the stored record.
-    contact_form = ContactForm(request.POST or None, instance=Member.objects.get(pk=m.pk), prefix="c")
+    contact_form = ContactForm(request.POST if request.POST.get("action") == "contact" else None, instance=Member.objects.get(pk=m.pk), prefix="c")
+    id_form = IdDocumentForm(request.POST if request.POST.get("action") == "iddoc" else None, instance=Member.objects.get(pk=m.pk), prefix="d")
+    if request.method == "POST" and request.POST.get("action") == "iddoc":
+        if not has_role(request.user, *PROCESS_ROLES):
+            return redirect("members:member", member_number=member_number)
+        if id_form.is_valid():
+            changed = services.update_id_document(m, user=request.user, data=id_form.cleaned_data)
+            messages.success(request, "Identity document updated." if changed else "No changes.")
+            return redirect("members:member", member_number=member_number)
     if request.method == "POST" and request.POST.get("action") == "contact":
         if not has_role(request.user, *PROCESS_ROLES):
             return redirect("members:member", member_number=member_number)
@@ -377,6 +386,7 @@ def member(request, member_number):
     ctx = {
         "m": m,
         "contact_form": contact_form,
+        "id_form": id_form,
         "interaction_form": InteractionForm(),
         "conditions": m.conditions.filter(active=True).select_related("condition", "certified_by"),
         "can_conditions": can_view_conditions(request.user),
@@ -491,3 +501,33 @@ def add_interaction(request, member_number):
     if form.is_valid():
         log(form.cleaned_data["summary"], member=m, kind=form.cleaned_data["kind"], event="staff." + form.cleaned_data["kind"], actor=request.user)
     return redirect(f"/members/{m.member_number}/#log")
+
+
+@role_required(*PROCESS_ROLES)
+def expired_ids(request):
+    """Members whose ID on file has expired or expires soon: ask for a current ID at their next visit."""
+    from django.core.paginator import Paginator
+
+    from apps.core.models import Parameter
+
+    today = timezone.localdate()
+    soon = today + timedelta(days=int(Parameter.get("id-expiry-warning-days")))
+    which = request.GET.get("show", "expired")
+    qs = Member.objects.filter(id_expiry__isnull=False).order_by("id_expiry")
+    qs = qs.filter(id_expiry__lt=today) if which == "expired" else qs.filter(id_expiry__gte=today, id_expiry__lte=soon)
+    page = Paginator(qs, 50).get_page(request.GET.get("page"))
+    return render(
+        request,
+        "members/expired_ids.html",
+        {
+            "page": page,
+            "show": which,
+            "today": today,
+            "soon": soon,
+            "counts": {
+                "expired": Member.objects.filter(id_expiry__lt=today).count(),
+                "soon": Member.objects.filter(id_expiry__gte=today, id_expiry__lte=soon).count(),
+            },
+            "page_title": "Expired IDs",
+        },
+    )

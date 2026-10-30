@@ -13,6 +13,7 @@ from django.contrib.auth.models import Group
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
+from django.db.models import Q
 from django.utils import timezone
 from django_otp.plugins.otp_static.models import StaticDevice
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -138,11 +139,18 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("DEMO_MODE is off: demo data (known passwords) is never seeded outside demo mode. Skipped."))
             return
         if opts["if_missing"] and TajIdentity.objects.exists():
+            done = False
             if not CouncilRegisterEntry.objects.exists():  # upgrade from v0.2.1: add practitioners without a full reseed
                 with transaction.atomic():
                     self._practitioners(random.Random(1473))  # noqa: S311  # nosec B311
                 self.stdout.write(f"demo: practitioners added ({Nurse.objects.count()} nurses, {CouncilRegisterEntry.objects.count()} council register rows)")
-            else:
+                done = True
+            if Member.objects.filter(Q(nis_number="") | Q(id_type="")).exists():  # upgrade to v0.2.6
+                with transaction.atomic():
+                    filled = self._identity_details(random.Random(1616))  # noqa: S311  # nosec B311
+                self.stdout.write(f"demo: NIS numbers and ID documents filled for {filled} people")
+                done = True
+            if not done:
                 self.stdout.write("demo data present; skipped")
             return
         call_command("bootstrap_reference")
@@ -157,6 +165,7 @@ class Command(BaseCommand):
             taj = self._taj(rng, opts["members"])
             self._members(rng, taj, doctors, users)
         self._open_queue(rng, doctors, users)
+        self._identity_details(random.Random(1616))  # noqa: S311  # nosec B311
         self._privacy_examples(users)
         self.stdout.write(
             self.style.SUCCESS(
@@ -216,6 +225,75 @@ class Command(BaseCommand):
             "address_line2": rng.choice(["", "", f"Suite {rng.randint(1, 12)}", f"Shop {rng.randint(1, 30)}"]),
             "town": rng.choice(TOWNS.get(parish, ["—"])),
         }
+
+    def _identity_details(self, rng):
+        """Every synthetic person gets an NIS number (one letter + six digits) and an ID document with issue and
+        expiry dates; about one member in twenty has an expired ID, and two demo staff IDs need attention."""
+        today = timezone.localdate()
+        used = set(Member.objects.exclude(nis_number="").values_list("nis_number", flat=True))
+        used |= set(Application.objects.exclude(nis_number="").values_list("nis_number", flat=True))
+        letters = "ABCDEFGHJKLMNPRSTW"
+
+        def new_nis(seed):
+            n = seed
+            while True:
+                value = f"{letters[n % len(letters)]}{(n * 7919 + 104729) % 1000000:06d}"
+                if value not in used:
+                    used.add(value)
+                    return value
+                n += 1
+
+        def id_doc(age):
+            kind = rng.choices(["nids", "drivers", "passport", "voter"], weights=[45, 30, 15, 10])[0] if age >= 18 else "birth"
+            if kind == "birth":
+                return kind, f"BC{rng.randint(1000000, 9999999)}", None, None
+            years = {"nids": 10, "drivers": 5, "passport": 10, "voter": 10}[kind]
+            expired = rng.random() < 0.05
+            expiry = today - timedelta(days=rng.randint(10, 700)) if expired else today + timedelta(days=rng.randint(5, years * 365))
+            issued = (
+                expiry.replace(year=expiry.year - years) if not (expiry.month == 2 and expiry.day == 29) else expiry.replace(year=expiry.year - years, day=28)
+            )
+            number = {
+                "nids": f"{rng.randint(100000000, 999999999)}",
+                "drivers": f"{rng.randint(100000000, 999999999)}",
+                "passport": f"A{rng.randint(1000000, 9999999)}",
+                "voter": f"{rng.randint(10000000, 99999999)}",
+            }[kind]
+            return kind, number, issued, expiry
+
+        members = list(Member.objects.filter(Q(nis_number="") | Q(id_type="")))
+        for m in members:
+            if not m.nis_number:
+                m.nis_number = new_nis(m.pk)
+            if not m.id_type:
+                m.id_type, m.id_number, m.id_issue_date, m.id_expiry = id_doc(m.age())
+                m.id_checked_at = m.registered_at
+        Member.objects.bulk_update(members, ["nis_number", "id_type", "id_number", "id_issue_date", "id_expiry", "id_checked_at"], batch_size=500)
+        apps = list(Application.objects.filter(nis_number="", status__in=Application.OPEN_STATUSES))
+        for a in apps:
+            owner = Member.objects.filter(trn=a.trn).exclude(trn="").only("nis_number").first() if a.trn else None
+            a.nis_number = owner.nis_number if owner else new_nis(1_000_000 + a.pk)
+        Application.objects.bulk_update(apps, ["nis_number"], batch_size=500)
+        staff_ids = {
+            "cc.walker": ("nids", "204517338", -2900, 750),
+            "cc.brown": ("drivers", "118204551", -1500, 320),
+            "sup.henry": ("nids", "300114282", -2000, 1600),
+            "mgr.morgan": ("passport", "A2210933", -1200, 2400),
+            "backoffice.lee": ("nids", "187003114", -900, 2700),
+            "ictadmin.james": ("drivers", "142275906", -1700, 120),
+            "auditor.shaw": ("nids", "155320417", -2600, 1000),
+            "print.reid": ("drivers", "176004215", -1850, -12),  # expired: shows the staff alert
+            "dpo.grant": ("passport", "A1984476", -3000, 21),  # expires within 30 days
+        }
+        for username, (kind, number, issued, expiry) in staff_ids.items():
+            get_user_model().objects.filter(username=username).update(
+                id_type=kind, id_issue_date=today + timedelta(days=issued), id_expiry=today + timedelta(days=expiry)
+            )
+            user = get_user_model().objects.filter(username=username).first()
+            if user and not user.id_number:
+                user.id_number = number
+                user.save(update_fields=["id_number"])
+        return len(members) + len(apps)
 
     def _practitioners(self, rng):
         """Practice addresses, the synthetic MCJ and NCJ register copies, and a nurses register."""
