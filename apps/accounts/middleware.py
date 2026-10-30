@@ -11,7 +11,17 @@ from .roles import has_role
 
 # Reachable before the second factor is verified. Everything else under /accounts/ (my account, temporary roles,
 # password change) needs MFA like any other page.
-OPEN_PATHS = ("/accounts/login/", "/accounts/logout/", "/accounts/mfa/", "/accounts/oidc/", "/accounts/password/reset/", "/static/", "/healthz", "/api/intake/")
+OPEN_PATHS = (
+    "/accounts/login/",
+    "/accounts/logout/",
+    "/accounts/mfa/",
+    "/accounts/oidc/",
+    "/accounts/password/reset/",
+    "/static/",
+    "/healthz",
+    "/api/intake/",
+    "/how-to-apply/",
+)
 
 
 class SessionIdleMiddleware:

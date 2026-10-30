@@ -28,7 +28,10 @@ class StaffForm(forms.ModelForm):
     class Meta:
         model = get_user_model()
         fields = ["first_name", "last_name", "email", "job_title", "phone", "staff_number", "centre", "id_type", "id_number", "id_issue_date", "id_expiry"]
-        widgets = {"id_issue_date": forms.DateInput(attrs={"type": "date"}), "id_expiry": forms.DateInput(attrs={"type": "date"})}
+        widgets = {
+            "id_issue_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "id_expiry": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        }
 
     def clean(self):
         data = super().clean()

@@ -583,7 +583,7 @@ class Command(BaseCommand):
             identity_checked=True,
             kind="access",
             channel="counter",
-            details="Asked at the Half-Way-Tree counter for a copy of everything the Fund holds about him.",
+            details="Asked at the Union Square counter for a copy of everything the Fund holds about him.",
             received_at=now - timedelta(days=3),
             due_at=now - timedelta(days=3) + timedelta(days=30),
             logged_by=users["cc.walker"],
@@ -616,7 +616,7 @@ class Command(BaseCommand):
             app = services.start_application(
                 user=user,
                 centre=user.centre,
-                channel=rng.choice(["walk_in", "walk_in", "email", "batch"]),
+                channel=rng.choice(["walk_in", "walk_in", "walk_in", "mail", "email", "batch"]),
                 received_at=now - timedelta(minutes=rng.randint(5, 600)),
                 trn=t.trn,
                 form_first_name=t.first_name,
@@ -628,9 +628,16 @@ class Command(BaseCommand):
             doctor = rng.choice(doctors)
             app.doctor, app.doctor_mcj = doctor, doctor.mcj_number
             app.collection_centre = app.centre
+            # As keyed from a complete paper form (rev. 12): serial, address, signatures, Section C details.
+            app.form_serial = str(9794000 + i * 7 + rng.randint(0, 6))
+            app.address_line1, app.address_line2, app.parish = t.address_line1, t.address_line2, t.parish
+            app.declaration_signed, app.declaration_date = True, timezone.localdate(app.received_at)
+            app.trn_copy_attached = app.channel == "mail"
+            app.doctor_signed, app.certified_on, app.conditions_total = True, timezone.localdate(app.received_at) - timedelta(days=rng.randint(1, 20)), 1
+            app.doctor_office_address, app.doctor_parish = doctor.address_line1, app.parish
             app.save()
             if i % 3:
-                services.set_conditions(app, [(rng.choice(conds), "moderate")])
+                services.set_conditions(app, [(rng.choice(conds), rng.choice(["mild", "mild", "severe"]))])
                 app.consent_given, app.consent_at, app.consent_version = True, timezone.now(), "2026-10"
                 app.save(update_fields=["consent_given", "consent_at", "consent_version"])
             services.refresh_status(app)

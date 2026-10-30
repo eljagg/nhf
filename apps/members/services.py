@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from apps.cards.models import Card, clean_card_name
 from apps.core import audit
-from apps.core.models import IntegrationRun
+from apps.core.models import IntegrationRun, Parameter
 from apps.core.notifications import queue as queue_notification
 from apps.doctors import services as doctor_services
 from apps.identity import services as identity
@@ -90,6 +90,14 @@ def _prefill_from_member(app, member):
         "address_line2",
         "parish",
         "nis_number",
+        "title",
+        "occupation",
+        "post_office",
+        "incapacitated",
+        "institutional_care",
+        "plwd",
+        "jcpd_evidence",
+        "jcpd_number",
     ):
         setattr(app, f, getattr(member, f))
     app.collection_centre = member.collection_centre
@@ -103,6 +111,9 @@ def _prefill_from_member(app, member):
             guardian.trn,
             guardian.phone,
         )
+        app.guardian_type, app.guardian_title, app.guardian_institution = guardian.guardian_type, guardian.title, guardian.institution
+        app.guardian_address, app.guardian_parish = guardian.address, guardian.parish
+        app.guardian_id_type, app.guardian_id_number = guardian.id_type, guardian.id_number
     latest = member.conditions.filter(active=True).select_related("certified_by").first()
     if latest and latest.certified_by:
         app.doctor, app.doctor_mcj = latest.certified_by, latest.certified_by.mcj_number
@@ -228,6 +239,76 @@ def on_srn_decided(issue):
 # ---------------------------------------------------------------------------
 # Rules and status
 # ---------------------------------------------------------------------------
+def form_checks(app):
+    """What the instructions on the back of the form require, by request type (Beneficiary Application Form rev. 12).
+
+    New applications and medical-record updates: name, TRN, address, contact details, applicant/guardian signature,
+    doctor's MCJ number and doctor's signature. A lost/replacement card on its own: name, TRN and signature only.
+    """
+    findings = []
+    replacement_only = (
+        app.kind == "change" and app.reprint_reason and not (app.change_contact or app.change_conditions or app.change_guardian or app.change_identity)
+    )
+    if not (app.declaration_signed or app.signature_id) and app.channel != "online":
+        findings.append(
+            engine.Finding(
+                "FORM", "error", "The applicant or guardian has not signed the declaration (tick it, or capture the signature).", "declaration_signed"
+            )
+        )
+    if replacement_only:
+        return findings
+    if app.kind == "new" or app.change_contact:
+        if not (app.address_line1 and app.parish):
+            findings.append(engine.Finding("FORM", "error", "Mailing address and parish are required.", "address_line1"))
+        if not (app.phone_mobile or app.phone_home or app.email):
+            findings.append(
+                engine.Finding("FORM", "error", "At least one way to contact the applicant (cellular, home phone or e-mail) is required.", "phone_mobile")
+            )
+    needs_doctor = not app.screening_only and (app.kind == "new" or app.change_conditions)
+    if needs_doctor and app.channel != "online" and not app.doctor_signed:
+        findings.append(engine.Finding("FORM", "error", "The doctor's signature in Section C has not been confirmed.", "doctor_signed"))
+    if needs_doctor and app.conditions_total is not None:
+        ticked = app.conditions.count()
+        if ticked != app.conditions_total:
+            findings.append(
+                engine.Finding(
+                    "FORM",
+                    "warning",
+                    f"The doctor wrote {app.conditions_total} condition(s) in total but {ticked} are ticked. Check Section C.",
+                    "conditions_total",
+                )
+            )
+    if app.channel == "mail" and not app.trn_copy_attached:
+        findings.append(engine.Finding("FORM", "error", "Mailed forms must enclose a photocopy of the applicant's TRN.", "trn_copy_attached"))
+    if app.channel in ("walk_in", "mail") and not app.form_serial:
+        findings.append(engine.Finding("FORM", "warning", "Record the serial number printed on the paper form.", "form_serial"))
+    findings.extend(subsidy_checks(app))
+    return findings
+
+
+def subsidy_checks(app):
+    """Double-subsidy groups (NHF, 2026): persons living with a disability (JCPD proof) and children under 19."""
+    findings = []
+    if app.plwd and not (app.jcpd_evidence and app.jcpd_number):
+        findings.append(
+            engine.Finding(
+                "PLWD",
+                "error",
+                "The double subsidy for persons living with a disability needs the JCPD ID card or interim letter and its number.",
+                "jcpd_number",
+            )
+        )
+    elif app.plwd:
+        findings.append(engine.Finding("PLWD", "info", f"Double subsidy (JCPD {app.get_jcpd_evidence_display().lower()} {app.jcpd_number})."))
+    dob = app.dob if not isinstance(app.dob, str) else timezone.datetime.fromisoformat(app.dob).date()
+    if dob:
+        age = engine.age_on(dob, timezone.localtime(app.received_at).date())
+        limit = int(Parameter.get("child-double-subsidy-under-age"))
+        if age is not None and age < limit:
+            findings.append(engine.Finding("CHILD", "info", f"Applicant is {age}: children under {limit} get double the NHF subsidy."))
+    return findings
+
+
 def evaluate(app):
     """Run the rules engine on an application (BR10004–BR10006)."""
     conditions = [ac.condition for ac in app.conditions.select_related("condition")]
@@ -235,12 +316,15 @@ def evaluate(app):
         dob=app.dob if not isinstance(app.dob, str) else timezone.datetime.fromisoformat(app.dob).date(),
         gender=app.gender,
         as_of=timezone.localtime(app.received_at).date(),
-        has_guardian=bool(app.guardian_name and app.guardian_relationship),
+        has_guardian=bool(app.guardian_name and (app.guardian_relationship or app.guardian_type)),
         conditions=conditions,
         has_doctor=bool(app.doctor_mcj),
         identity_confirmed=app.identity_confirmed,
+        screening_only=app.screening_only,
+        guardian_reason="incapacitated" if app.incapacitated else "in institutional care" if app.institutional_care else "",
     )
     outcome = engine.evaluate(ctx)
+    outcome.findings.extend(form_checks(app))
     if app.doctor and app.doctor.status == "pending":
         outcome.findings.append(
             engine.Finding(
@@ -397,6 +481,14 @@ def _create_member(app):
             nis_number=normalise_nis(app.nis_number),
             consent_at=app.consent_at or timezone.now(),
             consent_version=app.consent_version,
+            title=app.title,
+            occupation=app.occupation,
+            post_office=app.post_office,
+            incapacitated=app.incapacitated,
+            institutional_care=app.institutional_care,
+            plwd=app.plwd,
+            jcpd_evidence=app.jcpd_evidence,
+            jcpd_number=app.jcpd_number,
         )
     _write_guardian(member, app)
     _write_conditions(member, app)
@@ -407,7 +499,19 @@ def _write_guardian(member, app):
     if app.guardian_name:
         Guardian.objects.update_or_create(
             member=member,
-            defaults={"full_name": app.guardian_name, "relationship": app.guardian_relationship, "trn": app.guardian_trn, "phone": app.guardian_phone},
+            defaults={
+                "full_name": app.guardian_name,
+                "relationship": app.guardian_relationship or app.get_guardian_type_display(),
+                "trn": app.guardian_trn,
+                "phone": app.guardian_phone,
+                "guardian_type": app.guardian_type,
+                "title": app.guardian_title,
+                "institution": app.guardian_institution,
+                "address": app.guardian_address,
+                "parish": app.guardian_parish,
+                "id_type": app.guardian_id_type,
+                "id_number": app.guardian_id_number,
+            },
         )
 
 
@@ -448,8 +552,26 @@ def _apply_change(app, *, user):
         changed.append("nis_number")
         member.nis_number = normalise_nis(app.nis_number)
         member.save(update_fields=["nis_number", "updated_at"])
+    plwd_changed = [k for k in ("plwd", "jcpd_evidence", "jcpd_number") if getattr(member, k) != getattr(app, k)]
+    if plwd_changed:  # JCPD proof is accepted on any change form (NHF: bring it to any card centre to update the card)
+        for key in plwd_changed:
+            setattr(member, key, getattr(app, key))
+        member.save(update_fields=[*plwd_changed, "updated_at"])
+        changed.extend(plwd_changed)
     if app.change_contact:
-        for key in ("phone_mobile", "phone_home", "email", "address_line1", "address_line2", "parish"):
+        for key in (
+            "phone_mobile",
+            "phone_home",
+            "email",
+            "address_line1",
+            "address_line2",
+            "parish",
+            "title",
+            "occupation",
+            "post_office",
+            "incapacitated",
+            "institutional_care",
+        ):
             if getattr(member, key) != getattr(app, key):
                 changed.append(key)
                 setattr(member, key, getattr(app, key))

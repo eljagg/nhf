@@ -26,9 +26,15 @@ PARISHES = [
 class Centre(models.Model):
     """An NHFCard centre (processing and card-collection location)."""
 
+    KINDS = [("head_office", "Head Office"), ("drug_serv", "Drug Serv pharmacy")]
     code = models.CharField(max_length=10, unique=True)
     name = models.CharField(max_length=120)
     parish = models.CharField(max_length=3, choices=PARISHES)
+    kind = models.CharField(max_length=12, choices=KINDS, default="drug_serv")
+    address = models.CharField(max_length=200, blank=True)
+    hours = models.CharField("opening hours", max_length=200, blank=True)
+    phone = models.CharField(max_length=120, blank=True)
+    same_day = models.BooleanField("same-day card (about 15 minutes)", default=True)
     is_active = models.BooleanField(default=True)
     prints_cards = models.BooleanField(default=True)
 
@@ -80,6 +86,12 @@ class Parameter(models.Model):
     DEFAULTS = {
         "guardian-required-under-age": (18, "Applicants younger than this must have a guardian (BR10004)."),
         "jadep-age": (60, "Age at which the JADEP programme is assigned automatically (BR10005)."),
+        "child-double-subsidy-under-age": (19, "Children younger than this get double the NHF subsidy on medication and devices."),
+        "mail-address": ("National Health Fund, P.O. Box 412, Kingston 10", "Where paper applications are mailed (shown on the public How to apply page)."),
+        "mail-turnaround": ("3 to 4 weeks", "Turnaround promised for mailed applications (How to apply page)."),
+        "same-day-minutes": (15, "Card turnaround promised for complete forms handed in at a card centre."),
+        "record-update-hours": (24, "Medical-record updates are completed within this many hours (form rev. 12, back page)."),
+        "toll-free-numbers": ("(888) 342-5643 · (876) 906-1106", "Telephone numbers shown to the public."),
         "srn-prefix": ("9", "First digit of every Special Registration Number (SR10002)."),
         "directory-recheck-minutes": (
             15,
@@ -237,6 +249,7 @@ class StoredImage(models.Model):
         ("staff_photo", "Staff profile photo"),
         ("staff_id", "Staff ID document"),
         ("practitioner_photo", "Doctor / nurse photo"),
+        ("signature", "Applicant / guardian signature"),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     kind = models.CharField(max_length=20, choices=KINDS)

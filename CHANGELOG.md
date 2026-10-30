@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.2.8 — 30 October 2026 — the paper form digitised, How to apply page, subsidies
+
+- **Counter screen follows the paper form** (NHF Card / Change Request, revision 12, March 2026), top to bottom: form serial and revision; request type (change member details, update medical record, replace card); **Section A** with title, occupation and post office; **Section B** with relationship type (parent, guardian, field officer, institution), institution name, title, address, parish, contact, TRN and ID type and number (encrypted); the resident-of-Jamaica **declaration** with date; **Section C** with doctor's office address, parish and phone, date certified, Mild / Severe per condition, the doctor's "total number of conditions" and confirmation of the doctor's signature.
+- **Signature pad.** The applicant or guardian signs on screen with a mouse, pen tablet or touch screen. The signature is stored encrypted and shown only to Customer Care, supervisors, managers and auditors. Mailed forms are ticked as signed instead.
+- **Form completeness rules** from the back of the form:
+  - New applications and medical-record updates need the address, a contact, the applicant's signature and the doctor's signature.
+  - A lost or damaged card needs only name, TRN and signature.
+  - Mailed forms need the TRN photocopy.
+  - A differing condition total is flagged.
+  - The form serial is checked as unique.
+- **Screening only (Pap smear / PSA).** No Section C or doctor is needed. The applicant must qualify by age and sex (women 21–64, men 40–75) and is enrolled in the screening programme.
+- **Section B is now also required for incapacitated adults and people in institutional care**, not only minors.
+- **New channel "By mail"** (P.O. Box 412, Kingston 10).
+- **Pick-up slip** (the stub on the paper form): tracking number, form number, masked TRN, collection centre with address, phone and hours, and who is allowed to collect.
+- **Public "How to apply" page** (`/how-to-apply/`), linked from the sign-in page and staff navigation, with no sign-in needed:
+  - An animated step-by-step for in person, by mail and online through your doctor. Each step shows who acts, what happens, what NHF staff see and who can change it.
+  - Which sections to fill in, what to do when you already have a card, and the double subsidies.
+  - All 28 illnesses, the screening tests with subsidies, and the 20 centres with address, phone and hours, all read live from the reference data.
+- **Double subsidy**:
+  - Persons living with a disability: a JCPD ID card or interim letter is required. It is accepted on any change form and shown on the member record.
+  - Children under 19: noted automatically.
+- **Screening tests now carry the NHF subsidy**, using the 24 September 2026 rates. Echocardiogram added. PSA allows 4 a year for prostate-cancer members. The member record lists the tests the member qualifies for.
+- **Real centre details**: street addresses and phone numbers as published on nhf.org.jm. Addresses edited by the back office are never overwritten.
+- New parameters:
+  - `mail-address`
+  - `mail-turnaround`
+  - `same-day-minutes`
+  - `record-update-hours`
+  - `toll-free-numbers`
+  - `child-double-subsidy-under-age`
+- **Fixed:** date pickers (ID issue/expiry for members and staff, and the new form dates) showed blank for a saved date, and the next save cleared it. Dates now render in the format the browser expects.
+
 ## v0.2.7 — 30 October 2026 — centre scoping, NIS format
 
 - **Centre scoping.** Customer Care, supervisors and print operators see and work their own centre's applications, online queue and print queue. They can open another centre's application read-only (a member may ask about it anywhere), but cannot change it unless a supervisor assigns it to them. Managers, auditors, the DPO, back-office, administrators, SRN approvers and council confirmers see every centre. Member records stay searchable island-wide because members are served at any centre; every view is in the access log. The print queue can no longer be widened with `?centre=all`. Daily expired-ID digests go to each supervisor for their own centre.

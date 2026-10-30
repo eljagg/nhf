@@ -57,7 +57,7 @@ dashboards and saved reports (step 8) in A3.
 
 15. **Two-step for everyone** — sign in as `cc.walker`: scan the QR code, enter the code, and the ten backup codes appear once. Sign out and back in: the code is asked for. Enter one backup code instead: it works once and you are told how many are left.
 16. **Lost phone** — as `ictadmin.james`: *User activity* → `cc.walker` → *Reset two-step sign-in* with a reason. `cc.walker` is signed out and enrols again; *Security* shows the alert. Try it on your own account: refused.
-17. **Active Directory** (`LDAP_ENABLED=1`, `LDAP_SERVER_URI=mock://demo`) — sign in as `ad.campbell` with the demo password: an account is created as Customer Care at Half-Way-Tree from her AD groups. `ad.nogroup` is told they are not in a group that gives access; `ad.disabled` is told the account is disabled.
+17. **Active Directory** (`LDAP_ENABLED=1`, `LDAP_SERVER_URI=mock://demo`) — sign in as `ad.campbell` with the demo password: an account is created as Customer Care at Union Square from her AD groups. `ad.nogroup` is told they are not in a group that gives access; `ad.disabled` is told the account is disabled.
 18. **Directory page** — as `ictadmin.james`: *Directory sign-in* → look up `ad.henry` → *Test connection* shows the bind, his groups and that he is enabled; *Edit group mappings* changes which group gives which role.
 
 ## v0.2.2 additions
@@ -79,5 +79,13 @@ dashboards and saved reports (step 8) in A3.
 
 ## v0.2.7 additions
 
-30. **Centre scoping**: as `cc.walker` (Half-Way-Tree), *Applications* lists only Half-Way-Tree work. Search a Montego Bay applicant by tracking number: the application opens with a blue "belongs to Montego Bay" note and no buttons. As `mgr.morgan`, the same list shows every centre with a centre filter.
-31. **Online unit**: as `sup.henry` (Head Office), *Online Intake* lists the online applications; assign one to `cc.walker`, who can then work it from Half-Way-Tree.
+30. **Centre scoping**: as `cc.walker` (Union Square), *Applications* lists only Union Square work. Search a Montego Bay applicant by tracking number: the application opens with a blue "belongs to Montego Bay" note and no buttons. As `mgr.morgan`, the same list shows every centre with a centre filter.
+31. **Online unit**: as `sup.henry` (Head Office), *Online Intake* lists the online applications; assign one to `cc.walker`, who can then work it from Union Square.
+
+## v0.2.8 additions
+
+32. **How to apply**: sign out and click *See how to apply* on the sign-in page. The in-person walk-through plays on its own (7 seconds a step). Click *By mail*, then step 2: the P.O. Box and the TRN photocopy. Scroll down to the 28 illnesses, the screening tests with subsidies, and the 20 centres with phones and hours.
+33. **Paper form at the counter**: as `cc.walker`, open a draft walk-in. The screen reads top to bottom like the paper form: serial number, then A, B, declaration, C. Key serial `9794257`, tick a condition as *Severe*, tick *Doctor has signed*, and sign in the signature box. Press *Save and check*: *Ready to approve*, with *Signature on file* and today's date.
+34. **Rules from the back of the form**: untick *Paper form is signed* and save to get a red finding. Tick *Applicant is incapacitated* on an adult to make Section B required. Tick *Person living with a disability* without JCPD proof to get a red finding; add the JCPD letter number and it turns into an info note.
+35. **Pick-up slip**: *Pick-up slip* (top right) prints the stub with the tracking number, form number, masked TRN and the collection centre's address, phone and hours.
+36. **Screening on the member record**: a member's page lists the screening tests they qualify for (e.g. Pap smear and mammogram for a woman of 47) with what NHF pays.

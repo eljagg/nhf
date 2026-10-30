@@ -27,6 +27,32 @@ def healthz(request):
     return JsonResponse({"status": "ok"})
 
 
+def how_to_apply(request):
+    """Public page: how to apply for an NHF card, as an animated walk-through of each channel (no sign-in needed)."""
+    from apps.rules.models import MedicalCondition, ScreeningTest
+
+    from .models import Centre, Parameter
+
+    params = {
+        k.replace("-", "_"): Parameter.get(k) for k in ("mail-address", "mail-turnaround", "same-day-minutes", "record-update-hours", "toll-free-numbers")
+    }
+    response = render(
+        request,
+        "core/how_to_apply.html",
+        {
+            "centres": Centre.objects.filter(is_active=True).order_by("-kind", "name"),
+            "conditions": MedicalCondition.objects.filter(is_active=True).order_by("name"),
+            "screenings": ScreeningTest.objects.filter(is_active=True).select_related("requires_condition", "allowance_condition"),
+            "p": params,
+            "guardian_age": Parameter.get("guardian-required-under-age"),
+            "jadep_age": Parameter.get("jadep-age"),
+            "child_age": Parameter.get("child-double-subsidy-under-age"),
+        },
+    )
+    response["Cache-Control"] = "public, max-age=300"
+    return response
+
+
 @login_required
 def home(request):
     """Counter home: today's work, queues and the quick start."""

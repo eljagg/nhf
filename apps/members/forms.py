@@ -93,40 +93,113 @@ class ApplicationForm(forms.ModelForm):
     class Meta:
         model = Application
         fields = [
+            # Office use / form header
+            "form_serial",
+            "form_revision",
+            # Section A
+            "title",
             "nis_number",
-            "consent_given",
+            "occupation",
             "phone_mobile",
             "phone_home",
             "email",
             "address_line1",
             "address_line2",
+            "post_office",
             "parish",
             "collection_centre",
+            "incapacitated",
+            "institutional_care",
+            "screening_only",
+            "plwd",
+            "jcpd_evidence",
+            "jcpd_number",
+            # Section B
+            "guardian_type",
+            "guardian_institution",
+            "guardian_title",
             "guardian_name",
             "guardian_relationship",
+            "guardian_address",
+            "guardian_parish",
             "guardian_trn",
             "guardian_phone",
+            "guardian_id_type",
+            "guardian_id_number",
+            # Declaration
+            "declaration_signed",
+            "declaration_date",
+            "trn_copy_attached",
+            "consent_given",
+            # Section C
             "doctor_mcj",
             "referring_doctor_name",
+            "doctor_office_address",
+            "doctor_parish",
+            "doctor_office_phone",
+            "certified_on",
+            "conditions_total",
+            "doctor_signed",
+            # Change form tick-boxes
             "change_contact",
             "change_conditions",
             "change_guardian",
             "change_identity",
             "reprint_reason",
         ]
+        widgets = {
+            "declaration_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "certified_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "guardian_address": forms.TextInput(),
+            "doctor_office_address": forms.TextInput(),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["collection_centre"].queryset = Centre.objects.filter(is_active=True)
-        self.fields["parish"].choices = [("", "—")] + PARISHES
-        self.fields["doctor_mcj"].widget.attrs["inputmode"] = "numeric"
+        for name in ("parish", "guardian_parish", "doctor_parish"):
+            self.fields[name].choices = [("", "—")] + PARISHES
+        for name in ("doctor_mcj", "form_serial", "conditions_total"):
+            self.fields[name].widget.attrs["inputmode"] = "numeric"
+        self.fields["guardian_id_number"].widget = forms.TextInput(attrs={"autocomplete": "off"})
         if self.instance.kind != "change":
             for f in ("change_contact", "change_conditions", "change_guardian", "change_identity", "reprint_reason"):
                 self.fields.pop(f)
+        if self.instance.channel != "mail":
+            self.fields.pop("trn_copy_attached")
         _style(self)
         if not self.instance.is_open:
             for field in self.fields.values():
                 field.disabled = True
+
+    def clean_form_serial(self):
+        """Digits only; each pre-printed form is used once."""
+        value = "".join(ch for ch in self.cleaned_data.get("form_serial", "") if not ch.isspace())
+        if value and not value.isdigit():
+            raise forms.ValidationError("The form serial number is the digits printed on the form.")
+        if value and Application.objects.filter(form_serial=value).exclude(pk=self.instance.pk).exists():
+            other = Application.objects.filter(form_serial=value).exclude(pk=self.instance.pk).first()
+            raise forms.ValidationError(f"Form {value} is already recorded on application {other.tracking_number}.")
+        return value
+
+    def clean_conditions_total(self):
+        """The doctor's 'total number of conditions' box: 1–28 when filled."""
+        value = self.cleaned_data.get("conditions_total")
+        if value is not None and not 0 < value <= 40:
+            raise forms.ValidationError("Enter the number the doctor wrote (1–28).")
+        return value
+
+    def clean(self):
+        data = super().clean()
+        if data.get("guardian_type") == "institution" and not data.get("guardian_institution"):
+            self.add_error("guardian_institution", "Name the institution.")
+        if data.get("declaration_date") and data["declaration_date"] > timezone.localdate():
+            self.add_error("declaration_date", "The date signed cannot be in the future.")
+        if data.get("certified_on") and data["certified_on"] > timezone.localdate():
+            self.add_error("certified_on", "The certification date cannot be in the future.")
+        if data.get("jcpd_number"):
+            data["jcpd_number"] = data["jcpd_number"].strip().upper()
+        return data
 
     def clean_nis_number(self):
         """Normalised; must match the configured NIS format and not belong to another member."""
@@ -222,7 +295,10 @@ class IdDocumentForm(forms.ModelForm):
     class Meta:
         model = Member
         fields = ["id_type", "id_number", "id_issue_date", "id_expiry"]
-        widgets = {"id_issue_date": forms.DateInput(attrs={"type": "date"}), "id_expiry": forms.DateInput(attrs={"type": "date"})}
+        widgets = {
+            "id_issue_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "id_expiry": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -63,3 +63,9 @@ Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Bu
 | Doctor practice address and photo; nurses register with Nursing Council verification | Built (v0.2.2) |
 | Staff photo, ID picture and number; account suspension | Built (v0.2.2) |
 | Medical-institution connections with NHF approval | Planned v0.5 |
+| Paper application form rev. 12 digitised (Sections A/B/C, declaration, signature pad, form serial, pick-up slip, mail channel) | Built (v0.2.8) |
+| Public "How to apply" walk-through (in person / mail / doctor portal) | Built (v0.2.8) |
+| Screening-only enrolment (Pap / PSA); screening tests with subsidies; disability (JCPD) and under-19 double subsidy | Built (v0.2.8) |
+| Public benefits finder and provider search (as on nhf.org.jm) | Planned v0.3.1 |
+| Public request / complaint / Ask-a-pharmacist forms with service-charter clocks | Planned v0.3.1 |
+| Bearer collection with authorisation letter; card collection record | Planned v0.6 |

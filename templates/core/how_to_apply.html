@@ -1,0 +1,287 @@
+{% extends "base_public.html" %}{% load static %}
+{% block title %}How to apply for an NHF card{% endblock %}
+{% block body_class %}howto{% endblock %}
+{% block public %}
+<noscript><style>.flow-stage{display:grid!important;margin-bottom:1.5rem}[data-flow].hidden{display:block!important;margin-top:1rem}.flow-controls,.channel-tabs{display:none!important}</style></noscript>
+<header class="howto-hero">
+  <div class="max-w-6xl mx-auto px-5 py-8 lg:py-10">
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+      <span class="uppercase tracking-[0.28em] text-brand-200">{{ CLIENT_NAME }}</span>
+      <a href="{% url 'accounts:login' %}" class="text-white/90 underline underline-offset-4 no-print">Staff sign in</a>
+    </div>
+    <h1 class="text-3xl lg:text-4xl font-bold mt-3 leading-tight" style="font-size:revert">How to apply for an NHF card</h1>
+    <p class="mt-3 max-w-2xl text-brand-50/90 text-base">Apply in person and get your card in about <strong class="text-gold">{{ p.same_day_minutes }} minutes</strong>, send the form by mail, or let your doctor apply for you online. The card never expires.</p>
+    <p class="mt-4 text-sm text-brand-100">Questions? Call toll free <strong class="text-white">{{ p.toll_free_numbers }}</strong></p>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-5 py-8 space-y-12">
+
+  {# ---------- The walk-through ---------- #}
+  <section class="howto-section" aria-labelledby="flow-h">
+    <h2 id="flow-h" class="mb-1">Step by step</h2>
+    <p class="text-sm text-slate-600 mb-4">Choose how you will apply. Each step shows who does it, what happens, and what NHF staff see on their screen.</p>
+
+    <div class="channel-tabs flex flex-wrap gap-3 mb-6" role="tablist" aria-label="How you apply">
+      <button class="channel-tab" role="tab" id="tab-walkin" aria-controls="flow-walkin" aria-selected="true" data-flow-tab="walkin">
+        <span class="block text-sm font-semibold">In person</span><span class="block text-xs text-slate-500">Same day · about {{ p.same_day_minutes }} minutes</span>
+      </button>
+      <button class="channel-tab" role="tab" id="tab-mail" aria-controls="flow-mail" aria-selected="false" data-flow-tab="mail">
+        <span class="block text-sm font-semibold">By mail</span><span class="block text-xs text-slate-500">{{ p.mail_turnaround }}</span>
+      </button>
+      <button class="channel-tab" role="tab" id="tab-online" aria-controls="flow-online" aria-selected="false" data-flow-tab="online">
+        <span class="block text-sm font-semibold">Online, through your doctor</span><span class="block text-xs text-slate-500">No paper form for you to carry</span>
+      </button>
+    </div>
+
+    {# ===== In person ===== #}
+    <div class="card p-5 lg:p-6" id="flow-walkin" role="tabpanel" aria-labelledby="tab-walkin" data-flow>
+      <div class="flow-track mb-6" aria-hidden="false">
+        <div class="flow-rail"><div class="flow-fill"></div></div>
+        <button class="flow-node" data-step="0"><span class="flow-dot">1</span>Get the form</button>
+        <button class="flow-node" data-step="1"><span class="flow-dot">2</span>Sections A &amp; B</button>
+        <button class="flow-node" data-step="2"><span class="flow-dot">3</span>Doctor: Section C</button>
+        <button class="flow-node" data-step="3"><span class="flow-dot">4</span>Hand it in</button>
+        <button class="flow-node" data-step="4"><span class="flow-dot">5</span>Checks</button>
+        <button class="flow-node" data-step="5"><span class="flow-dot">6</span>Approved</button>
+        <button class="flow-node" data-step="6"><span class="flow-dot">7</span>Collect card</button>
+      </div>
+      <ol class="list-none p-0 m-0">
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 1 · Who</div><span class="who-chip who-applicant">You</span>
+            <h3 class="font-semibold mt-3">Get an application form</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>Pick up the NHF Card / Change Request form at any card centre or your doctor's office, or download it from nhf.org.jm.</p><p>Have your <strong>TRN</strong> ready. Children need their own TRN, not a parent's.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Nothing yet. No record exists until the form is handed in.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 2 · Who</div><span class="who-chip who-applicant">You</span> <span class="who-chip who-guardian">Guardian, if needed</span>
+            <h3 class="font-semibold mt-3">Complete Section A — and Section B if it applies</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p><strong>Section A</strong>: your name, TRN, mailing address, parish, date of birth, gender, occupation and phone or e-mail.</p><p><strong>Section B</strong> is completed by a parent, guardian, field officer or institution when the applicant is <strong>under {{ guardian_age }}</strong>, <strong>incapacitated</strong> or in <strong>institutional care</strong>. Bring the guardian's ID (driver's licence, passport or voter ID).</p><p>Sign the declaration that you live in Jamaica.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Still nothing — this happens on paper.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 3 · Who</div><span class="who-chip who-doctor">Your doctor</span>
+            <h3 class="font-semibold mt-3">Your doctor certifies your conditions (Section C)</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>The doctor ticks each covered illness you have, marks it <strong>mild or severe</strong>, writes the total number of conditions, their office address and phone and their <strong>Medical Council (MCJ) number</strong>, then signs.</p><p class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2"><strong>Pap smear or PSA only?</strong> If you have no chronic illness and only want these screening benefits, skip Section C — no doctor's signature is needed.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Later, the MCJ number is checked against the NHF Doctors register. An unknown number is sent to the Medical Council to confirm.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 4 · Who</div><span class="who-chip who-applicant">You</span> <span class="who-chip who-staff">Customer Care agent</span>
+            <h3 class="font-semibold mt-3">Hand the form in at any card centre</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>The agent keys the form into the system in the same order as the paper, records the serial number printed on the form, and checks your TRN with the Tax Office. You can sign on the signature pad.</p><p>You get a <strong>pick-up slip</strong> with your tracking number.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Tracking no. created · TRN ✓ matched<br>Name and date of birth locked to the Tax Office record<br>Form serial · Sections A, B, C</div>
+            <div class="text-xs text-slate-500 mt-2"><strong>Who can change it:</strong> the agent at the centre that received it. Staff at other centres can see the status only.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 5 · Who</div><span class="who-chip who-system">The system</span> <span class="who-chip who-staff">Agent / supervisor</span>
+            <h3 class="font-semibold mt-3">Eligibility checks run as it is keyed</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>Every save checks the form: guardian for minors, conditions that fit your age and sex, the doctor's MCJ number and signature, your signature, and contact details.</p><p>From age {{ jadep_age }}, JADEP is added automatically.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock"><span class="text-red-700">● Must fix</span> e.g. signature missing<br><span class="text-amber-700">● Check</span> e.g. condition total differs<br><span class="text-emerald-700">● Ready to approve</span></div>
+            <div class="text-xs text-slate-500 mt-2"><strong>Who can change it:</strong> the agent, or a supervisor it is assigned to. Medical details are shown only to staff who process eligibility.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 6 · Who</div><span class="who-chip who-staff">Customer Care agent</span>
+            <h3 class="font-semibold mt-3">Approved — card printed</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>You get an NHF member number and your card is printed at the centre. Your benefits start straight away.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Approved · member 2000000123<br>Card v1 queued for printing</div>
+            <div class="text-xs text-slate-500 mt-2"><strong>Who can change it:</strong> nobody edits an approved form. Later changes use a change request.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 7 · Who</div><span class="who-chip who-applicant">You</span> <span class="who-chip who-staff">Registration clerk</span>
+            <h3 class="font-semibold mt-3">Collect your card</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>Show your pick-up slip. The clerk hands over the card and records the collection. Someone else can collect it with a signed letter from you and your TRN card.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Card collected · date · clerk</div></div>
+        </li>
+      </ol>
+      <div class="flow-controls flex flex-wrap items-center gap-3 mt-6">
+        <button class="btn-secondary btn-sm" data-flow-prev>← Previous</button>
+        <button class="btn-primary btn-sm" data-flow-play aria-pressed="true">Pause</button>
+        <button class="btn-secondary btn-sm" data-flow-next>Next →</button>
+        <div class="flow-progress flex-1 min-w-[6rem]"><span></span></div>
+      </div>
+    </div>
+
+    {# ===== By mail ===== #}
+    <div class="card p-5 lg:p-6 hidden" id="flow-mail" role="tabpanel" aria-labelledby="tab-mail" data-flow>
+      <div class="flow-track mb-6">
+        <div class="flow-rail"><div class="flow-fill"></div></div>
+        <button class="flow-node" data-step="0"><span class="flow-dot">1</span>Complete the form</button>
+        <button class="flow-node" data-step="1"><span class="flow-dot">2</span>Post it</button>
+        <button class="flow-node" data-step="2"><span class="flow-dot">3</span>Received</button>
+        <button class="flow-node" data-step="3"><span class="flow-dot">4</span>Checks</button>
+        <button class="flow-node" data-step="4"><span class="flow-dot">5</span>Card ready</button>
+      </div>
+      <ol class="list-none p-0 m-0">
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 1 · Who</div><span class="who-chip who-applicant">You</span> <span class="who-chip who-guardian">Guardian</span> <span class="who-chip who-doctor">Doctor</span>
+            <h3 class="font-semibold mt-3">Complete Sections A, B and C</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>Exactly as for in-person: Section A by you, Section B by a guardian when needed, Section C by your doctor (not needed for Pap smear / PSA only). Sign the declaration.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Nothing yet.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 2 · Who</div><span class="who-chip who-applicant">You</span>
+            <h3 class="font-semibold mt-3">Post it with a photocopy of your TRN</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>Mail the completed form <strong>and a photocopy of your TRN</strong> to:</p><p class="font-semibold">{{ p.mail_address }}</p><p>Allow {{ p.mail_turnaround }}.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Nothing until the envelope is opened.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 3 · Who</div><span class="who-chip who-staff">Head Office staff</span>
+            <h3 class="font-semibold mt-3">Head Office keys the form</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>Staff enter it as a mailed application with the date it was received, record the form serial number and confirm the TRN photocopy is enclosed. The TRN is checked with the Tax Office.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Channel: By mail · received date<br>TRN photocopy enclosed ✓<br>TRN ✓ matched</div>
+            <div class="text-xs text-slate-500 mt-2"><strong>Who can change it:</strong> the Head Office team that received it.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 4 · Who</div><span class="who-chip who-system">The system</span> <span class="who-chip who-staff">Head Office staff</span>
+            <h3 class="font-semibold mt-3">Checks, and a call if something is missing</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>The same eligibility checks as in person. If something is missing or the TRN doesn't match, NHF contacts you using the phone or e-mail on the form.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Must fix / Check / Ready to approve<br>Contact log of every call or letter</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 5 · Who</div><span class="who-chip who-staff">Staff</span> <span class="who-chip who-applicant">You</span>
+            <h3 class="font-semibold mt-3">Approved — collect your card</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>Your card is printed for the collection centre you chose on the form, and you are told when it is ready.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Approved · card sent to your collection centre · you are notified</div></div>
+        </li>
+      </ol>
+      <div class="flow-controls flex flex-wrap items-center gap-3 mt-6">
+        <button class="btn-secondary btn-sm" data-flow-prev>← Previous</button>
+        <button class="btn-primary btn-sm" data-flow-play aria-pressed="true">Pause</button>
+        <button class="btn-secondary btn-sm" data-flow-next>Next →</button>
+        <div class="flow-progress flex-1 min-w-[6rem]"><span></span></div>
+      </div>
+    </div>
+
+    {# ===== Online via doctor ===== #}
+    <div class="card p-5 lg:p-6 hidden" id="flow-online" role="tabpanel" aria-labelledby="tab-online" data-flow>
+      <div class="flow-track mb-6">
+        <div class="flow-rail"><div class="flow-fill"></div></div>
+        <button class="flow-node" data-step="0"><span class="flow-dot">1</span>See your doctor</button>
+        <button class="flow-node" data-step="1"><span class="flow-dot">2</span>Doctor applies</button>
+        <button class="flow-node" data-step="2"><span class="flow-dot">3</span>NHF receives it</button>
+        <button class="flow-node" data-step="3"><span class="flow-dot">4</span>Approved</button>
+        <button class="flow-node" data-step="4"><span class="flow-dot">5</span>Collect card</button>
+      </div>
+      <ol class="list-none p-0 m-0">
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 1 · Who</div><span class="who-chip who-applicant">You</span>
+            <h3 class="font-semibold mt-3">Take your TRN card to your doctor</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>Your doctor must be registered for the NHF doctor portal. Give them your TRN and a mobile number where NHF can reach you.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Nothing yet.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 2 · Who</div><span class="who-chip who-doctor">Your doctor</span>
+            <h3 class="font-semibold mt-3">The doctor completes the application online</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>The doctor enters your name, TRN and mobile (Section A), certifies your illnesses (Section C) with their MCJ number and <strong>digital signature</strong>, and chooses the centre where you will collect the card.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Nothing until the doctor submits.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 3 · Who</div><span class="who-chip who-system">The system</span> <span class="who-chip who-staff">Head Office online unit</span>
+            <h3 class="font-semibold mt-3">NHF receives a signed electronic form</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>The form arrives in the online queue. Your TRN is checked with the Tax Office and the doctor with the Medical Council register automatically.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock"><span class="text-sky-700">Online</span> · portal reference<br>TRN ✓ · doctor ✓ confirmed<br>Ready to approve</div>
+            <div class="text-xs text-slate-500 mt-2"><strong>Who can change it:</strong> the Head Office online unit.</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 4 · Who</div><span class="who-chip who-staff">Head Office online unit</span>
+            <h3 class="font-semibold mt-3">Approved — card printed at your centre</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>The card is printed at the centre your doctor chose and you get a message when it is ready.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Approved · card at collection centre · SMS sent</div></div>
+        </li>
+        <li class="flow-stage gap-5 md:grid-cols-3" data-stage>
+          <div><div class="text-xs text-slate-500 mb-1">Step 5 · Who</div><span class="who-chip who-applicant">You</span> <span class="who-chip who-staff">Registration clerk</span>
+            <h3 class="font-semibold mt-3">Collect your card</h3></div>
+          <div class="text-sm text-slate-700 space-y-2"><p>Bring your TRN card. The clerk confirms who you are, hands over the card and records the collection.</p></div>
+          <div><div class="text-xs text-slate-500 mb-1">What NHF staff see</div><div class="screen-mock">Card collected · date · clerk</div></div>
+        </li>
+      </ol>
+      <div class="flow-controls flex flex-wrap items-center gap-3 mt-6">
+        <button class="btn-secondary btn-sm" data-flow-prev>← Previous</button>
+        <button class="btn-primary btn-sm" data-flow-play aria-pressed="true">Pause</button>
+        <button class="btn-secondary btn-sm" data-flow-next>Next →</button>
+        <div class="flow-progress flex-1 min-w-[6rem]"><span></span></div>
+      </div>
+    </div>
+  </section>
+
+  {# ---------- Which sections ---------- #}
+  <section class="howto-section" aria-labelledby="sections-h">
+    <h2 id="sections-h" class="mb-4">Which sections do I fill in?</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="card p-5"><span class="b-brand">Section A</span><h3 class="font-semibold mt-2">Always</h3><p class="text-sm text-slate-600 mt-1">Applicant information: name, TRN, address, parish, date of birth, gender, occupation, phone or e-mail.</p></div>
+      <div class="card p-5"><span class="b-brand">Section B</span><h3 class="font-semibold mt-2">When someone applies for you</h3><p class="text-sm text-slate-600 mt-1">Under {{ guardian_age }}, incapacitated, or in institutional care. Completed by a parent, guardian, field officer or institution, with their ID.</p></div>
+      <div class="card p-5"><span class="b-brand">Section C</span><h3 class="font-semibold mt-2">For a chronic illness</h3><p class="text-sm text-slate-600 mt-1">Completed and signed by your doctor with their MCJ number. Not needed if you only want a Pap smear or PSA test.</p></div>
+    </div>
+  </section>
+
+  {# ---------- Already have a card ---------- #}
+  <section class="howto-section" aria-labelledby="changes-h">
+    <h2 id="changes-h" class="mb-4">Already have a card?</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="card p-5"><h3 class="font-semibold">Add or update a condition</h3><p class="text-sm text-slate-600 mt-1">Tick <em>Update medical record</em> in Section A and have your doctor complete Section C. Your record is updated within {{ p.record_update_hours }} hours. You keep the same card — no new card is printed.</p></div>
+      <div class="card p-5"><h3 class="font-semibold">Lost or damaged card</h3><p class="text-sm text-slate-600 mt-1">Tick <em>Replace card</em>. Only your name, TRN and signature are needed. Same day at any card centre.</p></div>
+      <div class="card p-5"><h3 class="font-semibold">Change your details</h3><p class="text-sm text-slate-600 mt-1">Tick <em>Change member details</em> for a new address, phone or collection centre. A name or date of birth change comes from your Tax Office record.</p></div>
+    </div>
+  </section>
+
+  {# ---------- Double subsidies ---------- #}
+  <section class="howto-section" aria-labelledby="double-h">
+    <h2 id="double-h" class="mb-4">Double subsidy</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="card p-5"><h3 class="font-semibold">Children under {{ child_age }}</h3><p class="text-sm text-slate-600 mt-1">Get twice the NHF subsidy on medication and devices. Worked out from the date of birth — nothing extra to bring.</p></div>
+      <div class="card p-5"><h3 class="font-semibold">Persons living with a disability</h3><p class="text-sm text-slate-600 mt-1">Registered with the JCPD? Bring your JCPD ID card or interim disability certificate letter when you apply, or to any card centre to update your card.</p></div>
+    </div>
+  </section>
+
+  {# ---------- Conditions ---------- #}
+  <section class="howto-section" aria-labelledby="cond-h">
+    <h2 id="cond-h" class="mb-1">Illnesses covered ({{ conditions|length }})</h2>
+    <p class="text-sm text-slate-600 mb-4">Your doctor certifies these in Section C.</p>
+    <ul class="card p-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2 text-sm list-none">
+      {% for c in conditions %}<li class="flex gap-2"><span class="text-brand-600" aria-hidden="true">✓</span>{{ c.name }}</li>{% endfor %}
+    </ul>
+  </section>
+
+  {# ---------- Screening ---------- #}
+  <section class="howto-section" aria-labelledby="scr-h">
+    <h2 id="scr-h" class="mb-1">Screening and diagnostic tests</h2>
+    <p class="text-sm text-slate-600 mb-4">Paid for by the NHF card at participating providers.</p>
+    <div class="card overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="text-left text-xs text-slate-500 border-b border-slate-100"><tr><th class="px-4 py-2">Test</th><th class="px-4 py-2">Who</th><th class="px-4 py-2">How often</th><th class="px-4 py-2 text-right">NHF pays</th></tr></thead>
+        <tbody>
+          {% for t in screenings %}
+          <tr class="border-b border-slate-50">
+            <td class="px-4 py-2 font-medium">{{ t.name }}{% if t.without_doctor %} <span class="b-green">No doctor needed</span>{% endif %}</td>
+            <td class="px-4 py-2">{% if t.sex_restriction == "F" %}Women{% elif t.sex_restriction == "M" %}Men{% else %}Cardholders{% endif %}{% if t.min_age and t.max_age %} {{ t.min_age }}–{{ t.max_age }}{% elif t.min_age %} {{ t.min_age }}+{% endif %}{% if t.requires_condition %} with {{ t.requires_condition.name|lower }}{% endif %}</td>
+            <td class="px-4 py-2">{{ t.frequency }}{% if t.frequency_with_condition %}<span class="block text-xs text-slate-500">{{ t.frequency_with_condition }} with {{ t.allowance_condition.name|lower }}</span>{% endif %}</td>
+            <td class="px-4 py-2 text-right whitespace-nowrap">{% if t.subsidy %}J${{ t.subsidy|floatformat:"0g" }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {# ---------- Centres ---------- #}
+  <section class="howto-section" aria-labelledby="centres-h">
+    <h2 id="centres-h" class="mb-1">Where to apply ({{ centres|length }} locations)</h2>
+    <p class="text-sm text-slate-600 mb-4">Same-day cards at every location.</p>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {% for c in centres %}
+      <div class="card p-4">
+        <div class="font-semibold text-sm">{{ c.name }}</div>
+        <div class="text-xs text-slate-600 mt-1">{{ c.address }} · {{ c.get_parish_display }}</div>
+        {% if c.phone %}<div class="text-xs mt-1">☎ {{ c.phone }}</div>{% endif %}
+        {% if c.hours %}<div class="text-xs text-slate-500 mt-1">{{ c.hours }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <footer class="text-xs text-slate-500 border-t border-slate-200 pt-6 pb-10">
+    {{ CLIENT_NAME }} · Toll free {{ p.toll_free_numbers }} · Your information is processed under the Data Protection Act 2020; the privacy notice is printed on the form and read to you at the counter.
+  </footer>
+</main>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/howto.js' %}" nonce="{{ request.csp_nonce }}" defer></script>{% endblock %}

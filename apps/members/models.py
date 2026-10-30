@@ -8,6 +8,11 @@ from apps.core.crypto import EncryptedTextField
 from apps.core.models import PARISHES
 
 GENDERS = [("M", "Male"), ("F", "Female")]
+
+TITLES = [("Mr", "Mr"), ("Mrs", "Mrs"), ("Miss", "Miss"), ("Ms", "Ms"), ("Dr", "Dr"), ("Rev", "Rev"), ("Master", "Master")]
+GUARDIAN_TYPES = [("parent", "Parent"), ("guardian", "Guardian"), ("field_officer", "Field officer"), ("institution", "Institution")]
+JCPD_EVIDENCE = [("id_card", "JCPD ID card"), ("interim_letter", "JCPD interim disability certificate letter")]
+GUARDIAN_ID_TYPES = [("drivers", "Driver's licence"), ("passport", "Passport"), ("voter", "Voter ID")]
 SEVERITIES = [("mild", "Mild"), ("moderate", "Moderate"), ("severe", "Severe")]
 PROTECTED_FIELDS = ("first_name", "middle_name", "last_name", "dob", "gender")
 
@@ -59,10 +64,18 @@ class Member(models.Model):
     )
     processing_restriction_reason = models.CharField(max_length=300, blank=True)
     srn_annotation = models.CharField(max_length=120, blank=True, help_text="Shown with the number when it is an SRN (SR10005).")
+    title = models.CharField(max_length=10, choices=TITLES, blank=True)
     first_name = models.CharField(max_length=60)
     middle_name = models.CharField(max_length=60, blank=True)
     last_name = models.CharField(max_length=60)
     dob = models.DateField("Date of birth")
+    occupation = models.CharField(max_length=80, blank=True)
+    post_office = models.CharField(max_length=60, blank=True)
+    incapacitated = models.BooleanField(default=False, help_text="Applications are made by a guardian (Section B).")
+    institutional_care = models.BooleanField(default=False, help_text="Lives in institutional care; applications are made by the institution.")
+    plwd = models.BooleanField("person living with a disability (JCPD)", default=False, help_text="Double subsidy on medication, supplies and screening tests.")
+    jcpd_evidence = models.CharField("JCPD proof", max_length=20, choices=JCPD_EVIDENCE, blank=True)
+    jcpd_number = models.CharField("JCPD ID / letter no.", max_length=30, blank=True)
     gender = models.CharField(max_length=1, choices=GENDERS)
     phone_mobile = models.CharField(max_length=20, blank=True)
     phone_home = models.CharField(max_length=20, blank=True)
@@ -115,8 +128,15 @@ class Guardian(models.Model):
     """Parent or guardian of a minor member (BR10004)."""
 
     member = models.OneToOneField(Member, on_delete=models.CASCADE, related_name="guardian")
+    guardian_type = models.CharField("type of relationship", max_length=14, choices=GUARDIAN_TYPES, blank=True)
+    title = models.CharField(max_length=10, choices=TITLES, blank=True)
     full_name = models.CharField(max_length=120)
     relationship = models.CharField(max_length=40)
+    institution = models.CharField("name of institution", max_length=120, blank=True)
+    address = models.CharField("mailing address", max_length=200, blank=True)
+    parish = models.CharField(max_length=3, choices=PARISHES, blank=True)
+    id_type = models.CharField("ID type", max_length=10, choices=GUARDIAN_ID_TYPES, blank=True)
+    id_number = EncryptedTextField("identification number", blank=True)
     trn = models.CharField(max_length=9, blank=True)
     trn_validated = models.BooleanField(default=False)
     phone = models.CharField(max_length=20, blank=True)
@@ -166,7 +186,7 @@ class Application(models.Model):
     """One submitted form: a new registration or a change form (MR10001–MR10014)."""
 
     KINDS = [("new", "New registration"), ("change", "Change form")]
-    CHANNELS = [("walk_in", "Walk-in"), ("online", "Online"), ("email", "E-mail"), ("batch", "Batch (organisation)")]
+    CHANNELS = [("walk_in", "Walk-in"), ("online", "Online (doctor portal)"), ("mail", "By mail"), ("email", "E-mail"), ("batch", "Batch (organisation)")]
     STATUSES = [
         ("draft", "In progress"),
         ("ready", "Ready to approve"),
@@ -203,10 +223,27 @@ class Application(models.Model):
     form_first_name = models.CharField("first name on form", max_length=60, blank=True)
     form_last_name = models.CharField("last name on form", max_length=60, blank=True)
     form_dob = models.DateField("date of birth on form", null=True, blank=True)
+    form_serial = models.CharField("form serial no.", max_length=12, blank=True, db_index=True, help_text="Pre-printed number on the paper form.")
+    form_revision = models.CharField("form revision", max_length=10, blank=True, default="12")
+    title = models.CharField(max_length=10, choices=TITLES, blank=True)
     first_name = models.CharField(max_length=60, blank=True)
     middle_name = models.CharField(max_length=60, blank=True)
     last_name = models.CharField(max_length=60, blank=True)
     dob = models.DateField(null=True, blank=True)
+    occupation = models.CharField(max_length=80, blank=True)
+    post_office = models.CharField(max_length=60, blank=True)
+    incapacitated = models.BooleanField("applicant is incapacitated", default=False)
+    institutional_care = models.BooleanField("applicant is in institutional care", default=False)
+    plwd = models.BooleanField("person living with a disability (JCPD)", default=False, help_text="Double subsidy on medication, supplies and screening tests.")
+    jcpd_evidence = models.CharField("JCPD proof", max_length=20, choices=JCPD_EVIDENCE, blank=True)
+    jcpd_number = models.CharField("JCPD ID / letter no.", max_length=30, blank=True)
+    screening_only = models.BooleanField(
+        "screening benefits only (Pap smear / PSA)", default=False, help_text="No chronic illness: doctor certification is not needed."
+    )
+    trn_copy_attached = models.BooleanField("photocopy of TRN enclosed (mailed forms)", default=False)
+    declaration_signed = models.BooleanField("applicant / guardian signed the declaration", default=False)
+    declaration_date = models.DateField("date signed", null=True, blank=True)
+    signature = models.ForeignKey("core.StoredImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     gender = models.CharField(max_length=1, choices=GENDERS, blank=True)
 
     # Contact and collection
@@ -221,8 +258,15 @@ class Application(models.Model):
     )
 
     # Guardian (minors)
+    guardian_type = models.CharField("type of relationship", max_length=14, choices=GUARDIAN_TYPES, blank=True)
+    guardian_title = models.CharField("guardian's title", max_length=10, choices=TITLES, blank=True)
     guardian_name = models.CharField("guardian's full name", max_length=120, blank=True)
     guardian_relationship = models.CharField("relationship", max_length=40, blank=True)
+    guardian_institution = models.CharField("name of institution", max_length=120, blank=True)
+    guardian_address = models.CharField("guardian's mailing address", max_length=200, blank=True)
+    guardian_parish = models.CharField("guardian's parish", max_length=3, choices=PARISHES, blank=True)
+    guardian_id_type = models.CharField("guardian's ID type", max_length=10, choices=GUARDIAN_ID_TYPES, blank=True)
+    guardian_id_number = EncryptedTextField("guardian's ID number", blank=True)
     guardian_trn = models.CharField("guardian's TRN", max_length=9, blank=True)
     guardian_phone = models.CharField("guardian's phone", max_length=20, blank=True)
 
@@ -230,10 +274,16 @@ class Application(models.Model):
     doctor = models.ForeignKey("doctors.Doctor", null=True, blank=True, on_delete=models.SET_NULL, related_name="applications")
     doctor_mcj = models.CharField("doctor's MCJ no.", max_length=12, blank=True)
     referring_doctor_name = models.CharField(max_length=120, blank=True)
+    doctor_office_address = models.CharField("doctor's office address", max_length=200, blank=True)
+    doctor_parish = models.CharField("doctor's parish", max_length=3, choices=PARISHES, blank=True)
+    doctor_office_phone = models.CharField("doctor's office phone", max_length=30, blank=True)
+    certified_on = models.DateField("date certified by the doctor", null=True, blank=True)
+    conditions_total = models.PositiveSmallIntegerField("total no. of conditions (as written by the doctor)", null=True, blank=True)
+    doctor_signed = models.BooleanField("doctor signed Section C", default=False)
 
     # Change form
-    change_contact = models.BooleanField(default=False)
-    change_conditions = models.BooleanField(default=False)
+    change_contact = models.BooleanField("change member details", default=False)
+    change_conditions = models.BooleanField("update medical record", default=False)
     change_guardian = models.BooleanField(default=False)
     change_identity = models.BooleanField("refresh name/DOB from TRN service", default=False)
     reprint_reason = models.CharField(max_length=12, choices=REPRINT_REASONS, blank=True)
@@ -260,6 +310,7 @@ class Application(models.Model):
     class Meta:
         ordering = ["-received_at"]
         indexes = [models.Index(fields=["channel", "status"]), models.Index(fields=["member", "status"])]
+        constraints = [models.UniqueConstraint(fields=["form_serial"], condition=~models.Q(form_serial=""), name="uniq_form_serial")]
 
     def __str__(self):
         return self.tracking_number

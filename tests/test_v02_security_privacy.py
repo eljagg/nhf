@@ -85,6 +85,10 @@ def test_consent_required_before_approval(client, agent, taj, doctor, run_commit
         f"/members/applications/{app.tracking_number}/",
         {
             "consent_given": "on",
+            "declaration_signed": "on",
+            "doctor_signed": "on",
+            "address_line1": "12 Hope Road",
+            "parish": "AND",
             "phone_mobile": "876-555-0100",
             "doctor_mcj": doctor.mcj_number,
             "collection_centre": agent.centre_id,

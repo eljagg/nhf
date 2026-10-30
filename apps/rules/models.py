@@ -74,3 +74,44 @@ class RejectionReason(models.Model):
 
     def __str__(self):
         return self.label
+
+
+class ScreeningTest(models.Model):
+    """A diagnostic or screening test the NHFCard pays for (listed on the back of the application form)."""
+
+    code = models.SlugField(max_length=30, unique=True)
+    name = models.CharField(max_length=120)
+    sex_restriction = models.CharField(max_length=1, choices=SEX_CHOICES, blank=True)
+    min_age = models.PositiveSmallIntegerField(null=True, blank=True)
+    max_age = models.PositiveSmallIntegerField(null=True, blank=True)
+    requires_condition = models.ForeignKey(
+        MedicalCondition, null=True, blank=True, on_delete=models.SET_NULL, help_text="Only for cardholders with this condition."
+    )
+    frequency = models.CharField(max_length=120, help_text="As NHF states it, e.g. 'One test per year'.")
+    frequency_with_condition = models.CharField(
+        max_length=120, blank=True, help_text="Different allowance for holders of a condition, e.g. HbA1c for diabetics."
+    )
+    allowance_condition = models.ForeignKey(MedicalCondition, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    without_doctor = models.BooleanField(default=False, help_text="Can be applied for without doctor certification (Pap smear, PSA).")
+    subsidy = models.DecimalField("NHF subsidy (J$)", max_digits=9, decimal_places=2, null=True, blank=True)
+    subsidy_from = models.DateField("subsidy effective from", null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+    def eligible(self, *, age, gender, condition_codes):
+        """Does a person of this age and sex, with these conditions, qualify? Returns (bool, allowance text)."""
+        if self.sex_restriction and gender and self.sex_restriction != gender:
+            return False, ""
+        if age is not None and ((self.min_age is not None and age < self.min_age) or (self.max_age is not None and age > self.max_age)):
+            return False, ""
+        if self.requires_condition_id and self.requires_condition.code not in condition_codes:
+            return False, ""
+        if self.allowance_condition_id and self.allowance_condition.code in condition_codes and self.frequency_with_condition:
+            return True, self.frequency_with_condition
+        return True, self.frequency

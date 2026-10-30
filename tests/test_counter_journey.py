@@ -39,6 +39,10 @@ def complete(app, agent, doctor, *codes, guardian=False):
     app.doctor_mcj = doctor.mcj_number
     app.phone_mobile = "876-555-0100"
     app.consent_given = True
+    app.declaration_signed = True
+    app.doctor_signed = True
+    app.address_line1 = app.address_line1 or "12 Hope Road"
+    app.parish = app.parish or "AND"
     if guardian:
         app.guardian_name, app.guardian_relationship = "Janet Brown", "Mother"
     services.resolve_doctor(app, user=agent)

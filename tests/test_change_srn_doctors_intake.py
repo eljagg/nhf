@@ -35,6 +35,7 @@ def test_change_form_name_change_from_trn_service_reprints_with_new_version(agen
     with run_commits():
         change = services.start_application(user=agent, centre=agent.centre, channel="walk_in", received_at=timezone.now(), kind="change", member=member)
     change.refresh_from_db()
+    change.declaration_signed = True
     change.change_identity = True
     change.save()
     services.refresh_status(change)
@@ -51,6 +52,7 @@ def test_contact_only_change_form_does_not_reprint(agent, taj, doctor, run_commi
     with run_commits():
         change = services.start_application(user=agent, centre=agent.centre, channel="walk_in", received_at=timezone.now(), kind="change", member=member)
     change.refresh_from_db()
+    change.declaration_signed = True
     change.change_contact, change.address_line1 = True, "1 New Street"
     change.save()
     services.refresh_status(change)
@@ -64,6 +66,7 @@ def test_reprint_for_name_change_without_identity_refresh_is_blocked(agent, taj,
     with run_commits():
         change = services.start_application(user=agent, centre=agent.centre, channel="walk_in", received_at=timezone.now(), kind="change", member=member)
     change.refresh_from_db()
+    change.declaration_signed = True
     change.reprint_reason = "name_change"
     change.save()
     assert "BR10008" in [f.rule for f in services.evaluate(change).errors]
@@ -138,6 +141,8 @@ def test_unknown_doctor_confirmed_makes_application_ready(agent, manager, taj, r
     app = start(agent, run_commits, "100200301", "Marcia", "Campbell", date(1979, 3, 14))
     app.doctor_mcj = "99902"
     app.consent_given = True
+    app.declaration_signed = app.doctor_signed = True
+    app.address_line1, app.parish, app.phone_mobile = "12 Hope Road", "AND", "876-555-0100"
     services.resolve_doctor(app, user=agent)
     app.save()
     services.set_conditions(app, [(MedicalCondition.objects.get(code="hypertension"), "mild")])

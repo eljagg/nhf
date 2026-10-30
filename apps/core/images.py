@@ -20,7 +20,7 @@ from .models import StoredImage
 
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP", "MPO"}
-LONGEST_SIDE = {"staff_photo": 512, "practitioner_photo": 512, "staff_id": 1600}
+LONGEST_SIDE = {"staff_photo": 512, "practitioner_photo": 512, "staff_id": 1600, "signature": 900}
 MAX_PIXELS = 30_000_000  # ~ a 7,000 × 4,300 photo; larger is refused before decoding
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
@@ -29,6 +29,7 @@ VIEW_ROLES = {
     "staff_photo": None,
     "practitioner_photo": ("customer_care", "supervisor", "manager", "mcj_confirmer", "auditor"),
     "staff_id": ("ict_admin", "manager"),
+    "signature": ("customer_care", "supervisor", "manager", "auditor"),
 }
 
 
@@ -109,3 +110,18 @@ def serve(request, image):
         resp["Cache-Control"] = "private, max-age=300"
     resp["Content-Disposition"] = "inline"
     return resp
+
+
+def store_signature(data_url, *, user=None):
+    """A signature drawn on the counter screen (a PNG data URL from the signature pad): stored like any other image."""
+    import base64
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    prefix = "data:image/png;base64,"
+    if not data_url or not data_url.startswith(prefix):
+        raise ImageRejected("No signature was drawn.")
+    raw = base64.b64decode(data_url[len(prefix) :], validate=True)
+    if len(raw) > 600_000:
+        raise ImageRejected("The signature image is too large.")
+    return store(SimpleUploadedFile("signature.png", raw, content_type="image/png"), "signature", user=user)

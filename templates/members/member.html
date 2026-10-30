@@ -39,6 +39,12 @@
       </tbody></table>{% else %}<div class="card-b text-sm text-slate-500">{{ conditions|length }} condition(s) on record — details hidden for your role.</div>{% endif %}
     </div>
 
+    <div class="card"><div class="card-h"><h2>Screening tests and subsidy</h2>
+      <span class="flex gap-1">{% if m.plwd %}<span class="b-brand" title="JCPD {{ m.get_jcpd_evidence_display }} {{ m.jcpd_number }}">Double subsidy · disability</span>{% endif %}{% if child_double %}<span class="b-brand">Double subsidy · under {{ child_age }}</span>{% endif %}</span></div>
+      <table class="tbl"><thead><tr><th>Test</th><th>Allowance</th><th class="text-right">NHF pays</th></tr></thead><tbody>
+      {% for r in screenings %}<tr><td>{{ r.test.name }}</td><td>{{ r.allowance }}</td><td class="text-right">{% if r.test.subsidy %}J${{ r.test.subsidy|floatformat:"0g" }}{% if m.plwd %} <span class="text-xs text-slate-500" title="Double subsidy for persons living with a disability">×2</span>{% endif %}{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="3">No screening tests for this member's age and sex.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
     <div class="card"><div class="card-h"><h2>Cards</h2></div><table class="tbl"><thead><tr><th>Version</th><th>Reason</th><th>State</th><th>Centre</th><th>Serial</th><th>Queued</th><th>Dispatched</th></tr></thead><tbody>
       {% for c in cards %}<tr><td>v{{ c.version_no }}{% if c.reprint_seq %}.{{ c.reprint_seq }}{% endif %}</td><td>{{ c.get_reason_display }}</td><td>{{ c.get_state_display }}</td><td>{{ c.centre }}</td><td class="font-mono text-xs">{{ c.serial_number|default:"—" }}</td><td>{{ c.queued_at|date:"j M Y H:i" }}</td><td>{{ c.dispatched_at|date:"j M Y H:i"|default:"—" }}</td></tr>{% empty %}<tr><td colspan="7">No cards.</td></tr>{% endfor %}
     </tbody></table></div>

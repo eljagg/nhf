@@ -34,6 +34,8 @@ class RuleContext:
     conditions: list = field(default_factory=list)  # MedicalCondition instances
     has_doctor: bool = True
     identity_confirmed: bool = True
+    screening_only: bool = False  # Pap smear / PSA without a chronic illness: no doctor or condition needed
+    guardian_reason: str = ""  # "incapacitated" or "institutional care": a guardian is needed whatever the age
 
 
 @dataclass
@@ -80,6 +82,10 @@ def evaluate(ctx: RuleContext) -> Outcome:
         findings.append(
             Finding("BR10004", "error", f"Applicant is {age}: a parent or guardian must be recorded for applicants under {guardian_age}.", "guardian_name")
         )
+    elif ctx.guardian_reason and not ctx.has_guardian:
+        findings.append(
+            Finding("BR10004", "error", f"The applicant is {ctx.guardian_reason}: Section B (guardian or institution) must be completed.", "guardian_name")
+        )
 
     # BR10006 clinically inconsistent conditions
     for cond in ctx.conditions:
@@ -92,10 +98,31 @@ def evaluate(ctx: RuleContext) -> Outcome:
             bounds = f"{cond.min_age or 0}–{cond.max_age}" if cond.max_age else f"{cond.min_age}+"
             findings.append(Finding("BR10006", "error", f"{cond.name} is not consistent with age {age} (accepted ages {bounds}).", "conditions"))
 
-    if not ctx.conditions:
-        findings.append(Finding("CONDITIONS", "error", "At least one doctor-certified medical condition is required.", "conditions"))
-    if not ctx.has_doctor:
-        findings.append(Finding("DOCTOR", "error", "The certifying doctor's MCJ registration number is required.", "doctor_mcj"))
+    screening_ok = []
+    if ctx.screening_only:
+        from .models import ScreeningTest
+
+        screening_ok = [
+            t for t in ScreeningTest.objects.filter(is_active=True, without_doctor=True) if t.eligible(age=age, gender=ctx.gender, condition_codes=set())[0]
+        ]
+        if not screening_ok:
+            findings.append(
+                Finding(
+                    "SCREENING",
+                    "error",
+                    "Screening-only applications are for a Pap smear (women 21–64) or PSA test (men 40–75); the applicant does not qualify for either by age and sex.",
+                    "screening_only",
+                )
+            )
+        else:
+            findings.append(
+                Finding("SCREENING", "info", "Screening benefits only: " + " and ".join(t.name for t in screening_ok) + ". No doctor certification is needed.")
+            )
+    else:
+        if not ctx.conditions:
+            findings.append(Finding("CONDITIONS", "error", "At least one doctor-certified medical condition is required.", "conditions"))
+        if not ctx.has_doctor:
+            findings.append(Finding("DOCTOR", "error", "The certifying doctor's MCJ registration number is required.", "doctor_mcj"))
 
     # Programme eligibility
     programmes = []
@@ -107,6 +134,10 @@ def evaluate(ctx: RuleContext) -> Outcome:
             continue
         covered = cond_ids & {c.pk for c in prog.conditions.all()}
         if prog.requires_condition and not covered:
+            continue
+        if prog.code == "screening":
+            if ctx.screening_only and screening_ok:
+                programmes.append(prog)
             continue
         if prog.auto_assign or covered:
             programmes.append(prog)

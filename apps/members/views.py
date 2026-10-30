@@ -154,7 +154,7 @@ def _context(request, app, form=None, condition_rows=None):
         "validation": validation,
         "identity_changes": services.identity_changes(app),
         "condition_rows": condition_rows or _condition_rows(app),
-        "severities": SEVERITIES,
+        "severities": [sv for sv in SEVERITIES if sv[0] != "moderate" or app.conditions.filter(severity="moderate").exists()],  # paper form: mild / severe
         "can_conditions": can_view_conditions(request.user),
         "can_process": has_role(request.user, *PROCESS_ROLES) and app.is_open and can_work_application(request.user, app),
         "other_centre": not can_work_application(request.user, app),
@@ -194,6 +194,18 @@ def application(request, tracking):
                 app.consent_version = str(Parameter.get("privacy-notice-version"))
             elif not app.consent_given:
                 app.consent_at, app.consent_version = None, ""
+            signature_data = request.POST.get("signature_data", "")
+            if signature_data and "signature_data" in request.POST:
+                from apps.core.images import ImageRejected, store_signature
+
+                try:
+                    app.signature = store_signature(signature_data, user=request.user)
+                except (ImageRejected, ValueError) as exc:
+                    messages.error(request, f"Signature not saved: {exc}")
+                else:
+                    app.declaration_signed = True
+                    app.declaration_date = app.declaration_date or timezone.localdate()
+                    audit.record("application.signature_captured", app, f"{app.tracking_number} signature captured on the signature pad")
             services.resolve_doctor(app, user=request.user)
             app.save()
             if rows is not None:
@@ -203,6 +215,11 @@ def application(request, tracking):
             app = _app(tracking)
             messages.success(request, "Saved. " + ("Ready to approve." if app.status == "ready" else "See the checks below."))
             return redirect("members:application", tracking=tracking)
+        problems = ", ".join(str(form.fields[name].label or name).lower() for name in form.errors if name in form.fields)
+        messages.error(
+            request,
+            "Not saved — check " + (problems or "the form") + "." + (" Ask the applicant to sign again." if request.POST.get("signature_data") else ""),
+        )
         return render(request, "members/application.html", _context(request, app, form=form, condition_rows=rows))
     return render(request, "members/application.html", _context(request, app))
 
@@ -224,6 +241,27 @@ def identity_panel(request, tracking):
             "validation": app.trn_validation,
             "can_process": has_role(request.user, *PROCESS_ROLES) and app.is_open,
             "recheck_form": RecheckForm(initial={"form_first_name": app.form_first_name, "form_last_name": app.form_last_name, "form_dob": app.form_dob}),
+        },
+    )
+
+
+@role_required(*PROCESS_ROLES)
+def pickup_slip(request, tracking):
+    """The tear-off stub of the paper form, printed for the applicant: tracking number, collection centre, what to bring."""
+    app = _app(tracking)
+    audit.record("application.slip_printed", app, f"{app.tracking_number} pick-up slip printed")
+    centre = app.collection_centre or app.centre
+    return render(
+        request,
+        "members/pickup_slip.html",
+        {
+            "app": app,
+            "centre": centre,
+            "clerk": app.entered_by or request.user,
+            "trn_masked": f"•••-•••-{app.trn[-3:]}" if app.trn else "",
+            "toll_free": Parameter.get("toll-free-numbers"),
+            "record_update_hours": Parameter.get("record-update-hours"),
+            "printed_at": timezone.localtime(),
         },
     )
 
@@ -414,9 +452,27 @@ def member(request, member_number):
         "applications": m.applications.select_related("centre", "rejection_reason")[:20],
         "interactions": m.interactions.select_related("actor", "application").prefetch_related("notes")[:60],
         "guardian": getattr(m, "guardian", None),
+        "screenings": _screenings_for(m, with_conditions=can_view_conditions(request.user)),
+        "child_double": m.age() is not None and m.age() < int(Parameter.get("child-double-subsidy-under-age")),
+        "child_age": Parameter.get("child-double-subsidy-under-age"),
         "page_title": m.full_name,
     }
     return render(request, "members/member.html", ctx)
+
+
+def _screenings_for(m, *, with_conditions):
+    """Screening tests the member qualifies for. Staff who may not see conditions get only the age/sex-based ones."""
+    from apps.rules.models import ScreeningTest
+
+    codes = set(m.conditions.filter(active=True).values_list("condition__code", flat=True)) if with_conditions else set()
+    rows = []
+    for test in ScreeningTest.objects.filter(is_active=True).select_related("requires_condition", "allowance_condition"):
+        if not with_conditions and test.requires_condition_id:
+            continue
+        ok, allowance = test.eligible(age=m.age(), gender=m.gender, condition_codes=codes)
+        if ok:
+            rows.append({"test": test, "allowance": allowance})
+    return rows
 
 
 @role_required(*MEMBER_ROLES)

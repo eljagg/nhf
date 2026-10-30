@@ -267,3 +267,45 @@ html.dark .theme-toggle .icon-moon { display: none; }
 }
 html.dark .avatar { background: rgba(45,212,191,.12); color: #99f6e4; --tw-ring-color: rgba(148,163,184,.25); }
 html.dark .id-doc { --tw-ring-color: rgba(148,163,184,.25); }
+
+/* ---- Public "How to apply" walk-through (v0.2.8) ---- */
+@layer components {
+  body.howto { background: #f4f6f7; color: var(--color-ink); }
+  .howto-hero { background: radial-gradient(110% 120% at 0% 0%, #137062 0%, transparent 60%), linear-gradient(135deg, #0a3530, #052b26); color: #fff; }
+  .channel-tab { @apply flex-1 min-w-[12rem] text-left rounded-xl border-2 border-slate-200 bg-white px-4 py-3 transition; cursor: pointer; }
+  .channel-tab:hover { border-color: var(--color-brand-200); }
+  .channel-tab[aria-selected="true"] { border-color: var(--color-brand-500); box-shadow: 0 0 0 4px rgba(27,138,122,.12); }
+  .flow-track { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: .25rem; padding-top: .25rem; }
+  .flow-rail { position: absolute; left: 1.4rem; right: 1.4rem; top: 1.65rem; height: 4px; border-radius: 9999px; background: #dbe3e6; }
+  .flow-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; background: linear-gradient(90deg, var(--color-brand-500), var(--color-ja-green)); width: 0; transition: width .6s cubic-bezier(.4,0,.2,1); }
+  .flow-node { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: .4rem; background: none; border: 0; cursor: pointer; padding: 0 .1rem; color: #475569; font-size: .75rem; text-align: center; line-height: 1.2; }
+  .flow-dot { width: 2.8rem; height: 2.8rem; border-radius: 9999px; display: grid; place-items: center; font-weight: 700; background: #fff; border: 3px solid #dbe3e6; color: #64748b; transition: all .35s ease; }
+  .flow-node.done .flow-dot { border-color: var(--color-brand-500); background: var(--color-brand-50); color: var(--color-brand-700); }
+  .flow-node.active { color: var(--color-ink); font-weight: 600; }
+  .flow-node.active .flow-dot { border-color: var(--color-brand-600); background: var(--color-brand-600); color: #fff; transform: scale(1.12); box-shadow: 0 0 0 6px rgba(27,138,122,.18); animation: flow-pulse 1.8s ease-out infinite; }
+  .flow-stage { display: none; }
+  .flow-stage.active { display: grid; animation: flow-in .45s ease both; }
+  .who-chip { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold; }
+  .who-applicant { background: #e0f2fe; color: #075985; }
+  .who-guardian { background: #ede9fe; color: #5b21b6; }
+  .who-doctor { background: #fef3c7; color: #92400e; }
+  .who-staff { background: var(--color-brand-100); color: var(--color-brand-800); }
+  .who-system { background: #e2e8f0; color: #334155; }
+  .screen-mock { @apply rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs; font-family: var(--font-mono); }
+  .flow-progress { height: 3px; background: #e2e8f0; border-radius: 9999px; overflow: hidden; }
+  .flow-progress > span { display: block; height: 100%; width: 0; background: var(--color-brand-500); }
+  .flow-progress.run > span { animation: flow-timer var(--flow-ms, 7000ms) linear forwards; }
+  .howto-section h2 { font-size: 1.25rem; }
+}
+@keyframes flow-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes flow-pulse { 0% { box-shadow: 0 0 0 0 rgba(27,138,122,.35); } 100% { box-shadow: 0 0 0 14px rgba(27,138,122,0); } }
+@keyframes flow-timer { from { width: 0; } to { width: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .flow-stage.active, .flow-node.active .flow-dot { animation: none; }
+  .flow-fill { transition: none; }
+  .flow-progress.run > span { animation: none; }
+}
+@media print {
+  .howto-hero, .channel-tabs, .flow-controls, .no-print { display: none !important; }
+  .flow-stage { display: grid !important; break-inside: avoid; margin-bottom: 1rem; }
+}

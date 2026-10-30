@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 SKIP_PREFIXES = ("/static/", "/healthz", "/favicon")
 OBJECT_KWARGS = {"tracking": "application", "member_number": "member", "mcj": "doctor", "tracking_number": "application"}
-PASSWORD_EXEMPT = ("/accounts/login/", "/accounts/logout/", "/accounts/mfa/", "/accounts/password/", "/static/", "/healthz", "/api/intake/")
+PASSWORD_EXEMPT = ("/accounts/login/", "/accounts/logout/", "/accounts/mfa/", "/accounts/password/", "/static/", "/healthz", "/api/intake/", "/how-to-apply/")
 
 
 def _skip(request):

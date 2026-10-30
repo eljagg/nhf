@@ -10,6 +10,7 @@ urlpatterns = [
     path("search/", views.search, name="search"),
     path("expired-ids/", views.expired_ids, name="expired-ids"),
     path("applications/<str:tracking>/", views.application, name="application"),
+    path("applications/<str:tracking>/slip/", views.pickup_slip, name="pickup-slip"),
     path("applications/<str:tracking>/identity/", views.identity_panel, name="identity-panel"),
     path("applications/<str:tracking>/heartbeat/", views.heartbeat, name="heartbeat"),
     path("applications/<str:tracking>/recheck/", views.recheck, name="recheck"),
