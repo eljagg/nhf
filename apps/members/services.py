@@ -256,6 +256,16 @@ def evaluate(app):
                 "doctor_mcj",
             )
         )
+    restricted = app.member if app.member_id else Member.objects.filter(trn=app.trn).exclude(trn="").first()
+    if restricted and restricted.processing_restricted_at:
+        outcome.findings.append(
+            engine.Finding(
+                "DPA",
+                "error",
+                "The member has asked the Fund to restrict the use of their data. Nothing can be approved until the Data Protection "
+                "Officer lifts the restriction; refer any questions to the DPO.",
+            )
+        )
     if app.doctor and app.doctor.register_concern:
         checked = timezone.localtime(app.doctor.register_checked_at).strftime("%d %b %Y")
         outcome.findings.append(

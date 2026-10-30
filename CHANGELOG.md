@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.2.3 — 29 October 2026 — security review fixes, Active Directory state followed in-session, Data Protection Act additions
+
+Security (independent code review; every finding has a regression test):
+- **Fixed: second factor could be bypassed** by opening the enrolment page with a stolen password. Anyone who already has an authenticator must now pass the code check before enrolling or replacing one.
+- **Separation of duties**: nobody can grant themselves a temporary role; managers grant only counter and back-office roles, administrators only back-office; privileged roles are never granted temporarily. In the back office nobody edits their own account, only a superuser can change superuser status, permissions, or the e-mail and password of a privileged account; role and flag changes are audited.
+- E-mail of privileged accounts locked on the Staff page; any e-mail change is audited and the old address is told.
+- Client address taken from the trusted proxy only (`TRUSTED_PROXY_COUNT`), so forged headers can no longer dodge rate limits or blank the access log.
+- Production: demo features off unless `DEMO_MODE=1`; `FIELD_ENCRYPTION_KEY` required, with key rotation (`NEW,OLD` + `manage.py rotate_field_keys`); demo directory and demo seed refused outside demo mode.
+- Administrator lock now ends live sessions and blocks Microsoft and AD sign-in; an account disabled here is not re-enabled by a directory sign-in.
+- Doctor-portal requests signed with timestamp and single-use nonce (replays refused); malformed payloads return 400.
+- API schema requires sign-in; 10-hour absolute session cap enforced; full TRN no longer sent by SMS; application administrators no longer see outbound member messages; CSV exports neutralise spreadsheet formulas; data-subject requests cannot be linked to the wrong member by a junk search.
+- **Two-person rule for roles**: roles on local accounts change only by an application administrator's request approved by a manager who is neither the requester nor the person concerned (on the *Staff* record); directory accounts take roles from AD/Entra groups. In the back office roles, group permissions and directory group mappings are read-only except for a superuser.
+- Security parameters (retention periods, alert and lookup thresholds, AD re-check interval, deadlines) have enforced minimums and maximums, can be changed only by application administrators and the DPO, and every change is audited.
+- An encrypted value that cannot be opened (missing key) is never overwritten on save; `rotate_field_keys` works on the raw values, all or nothing.
+- Directory safety: a failed, ambiguous or empty directory search is treated as "directory unreachable", never as "everyone left"; the hourly sync refuses to disable more than 5% of accounts in one run and raises an alert instead.
+- The DPO's restriction reason is no longer shown at the counter.
+- Image uploads refused above 30 megapixels before decoding; request bodies over 25 MB refused; Permissions-Policy and no-store caching on signed-in pages; hourly per-user limits (with alert) on TRN screening and council register checks; back-office sign-in goes through the staff sign-in page.
+
+Active Directory:
+- Signed-in AD users are re-checked against AD every 15 minutes (parameter `directory-recheck-minutes`); anyone disabled or removed from the mapped groups is signed out at once. Directory sync now hourly. AD outages do not sign people out. *Staff* shows "Disabled in directory".
+
+Data Protection Act 2020:
+- **Restriction of processing**: the DPO can restrict a member's record from a request (objection, disputed data); no application for that member can be approved until lifted; banner on the member record.
+- New request types: review of an automated decision, stop direct marketing.
+- **Breach notices**: draft notice to the Information Commissioner (facts, nature and scale, likely consequences, measures, DPO contact) and letter to the people affected; clock for telling the people affected within the same 72 hours.
+- **Annual impact assessment** register: draft pre-filled from the processing register and the safeguards in place, DPO approval, recorded submission to the Commissioner.
+- Dashboard shows registration with the Commissioner (number and renewal date, warning 60 days ahead), this year's impact assessment, DPO contact details, restricted members.
+- Former staff ID records (ID number, ID picture, photo) erased automatically a year after the account is disabled (`staff-id-retention-days`).
+- Privacy notice updated (version 2026-11): sensitive health data with written consent, Nursing Council, human decisions, every right under the Act, DPO and Commissioner. Updated automatically where NHF had not edited it.
+- Processing register: nurse validation, staff identity records, directory sign-in added.
+
 ## v0.2.2 — 29 October 2026 — doctors' practice locations and photos, nurses, council register connector, staff profiles
 
 - **Doctors**: practice address (address, line 2, town/district, parish) alongside the practice name, shown on the register list and profile and searchable by town. Profile photo.

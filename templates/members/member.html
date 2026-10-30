@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+{% if m.processing_restricted_at %}<div class="finding-error mb-3" role="alert"><strong>Processing restricted</strong> since {{ m.processing_restricted_at|date:"j M Y" }} at the member's request (Data Protection Act). Applications cannot be approved until the Data Protection Officer lifts it.</div>{% endif %}
 <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
   <div>
     <div class="flex flex-wrap items-center gap-2"><h1>{{ m.full_name }}</h1><span class="b-{% if m.status == 'active' %}green{% else %}grey{% endif %}">{{ m.get_status_display }}</span>{% for e in enrolments %}{% if not e.ended_at %}<span class="b-brand">{{ e.programme.name }}</span>{% endif %}{% endfor %}</div>

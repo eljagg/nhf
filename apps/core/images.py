@@ -7,6 +7,7 @@ smuggled inside the file. The result is encrypted and stored in the database (St
 
 import hashlib
 import io
+import warnings
 
 from django.http import Http404, HttpResponse
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -20,7 +21,8 @@ from .models import StoredImage
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP", "MPO"}
 LONGEST_SIDE = {"staff_photo": 512, "practitioner_photo": 512, "staff_id": 1600}
-Image.MAX_IMAGE_PIXELS = 50_000_000  # refuse decompression bombs
+MAX_PIXELS = 30_000_000  # ~ a 7,000 × 4,300 photo; larger is refused before decoding
+Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 # Who may see each kind. Staff photos: anyone signed in (shown in the top bar and staff lists).
 VIEW_ROLES = {
@@ -42,10 +44,14 @@ def store(upload, kind, *, user=None):
         raise ImageRejected("Choose an image file.")
     if upload.size > MAX_UPLOAD_BYTES:
         raise ImageRejected("The image is larger than 8 MB.")
-    raw = upload.read()
+    raw = upload.read(MAX_UPLOAD_BYTES + 1)
     try:
-        probe = Image.open(io.BytesIO(raw))
-        probe.verify()
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            probe = Image.open(io.BytesIO(raw))  # reads the header only
+            if probe.width * probe.height > MAX_PIXELS:
+                raise ImageRejected("The image is too large (pixels). Use a photo under 30 megapixels.")
+            probe.verify()
         img = Image.open(io.BytesIO(raw))
         if img.format not in ALLOWED_FORMATS:
             raise ImageRejected("Use a JPEG, PNG or WebP image.")
@@ -57,7 +63,9 @@ def store(upload, kind, *, user=None):
             img = background
         img = img.convert("RGB")
         img.thumbnail((LONGEST_SIDE[kind], LONGEST_SIDE[kind]), Image.Resampling.LANCZOS)
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError, SyntaxError) as exc:
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise ImageRejected("The image is too large (pixels). Use a photo under 30 megapixels.") from exc
+    except (UnidentifiedImageError, OSError, SyntaxError) as exc:
         raise ImageRejected("That file is not a readable image.") from exc
     if min(img.size) < 64:
         raise ImageRejected("The image is too small — at least 64 pixels on each side.")

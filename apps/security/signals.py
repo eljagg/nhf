@@ -10,16 +10,9 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from apps.core.models import Parameter
+from apps.core.net import client_ip  # noqa: E402,F401  (re-exported for existing imports)
 
 from .models import PasswordHistory, UserSession
-
-
-def client_ip(request):
-    """First address in X-Forwarded-For (Railway / nginx), else REMOTE_ADDR."""
-    if request is None:
-        return None
-    fwd = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    return (fwd.split(",")[0].strip() if fwd else request.META.get("REMOTE_ADDR")) or None
 
 
 def session_ref(key):

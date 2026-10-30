@@ -7,7 +7,7 @@ from .models import Notification
 TEMPLATES = {
     "trn-invalid": (
         "TRN could not be validated",
-        "NHF: We could not validate TRN {trn} for your NHF Card application {tracking}. Please visit any NHFCard centre with your TRN card.",
+        "NHF: We could not validate the TRN ending {trn_tail} on your NHF Card application {tracking}. Please visit any NHFCard centre with your TRN card.",
     ),
     "application-received-online": (
         "Online application received",
@@ -39,12 +39,15 @@ TEMPLATES = {
         "{who} now shows as '{status}' on the council register. Review before accepting further certifications.",
     ),
     "staff-suspended": ("Account suspended", "{who} was suspended by {by}: {reason}."),
+    "role-change-requested": ("Role change to approve", "{by} asked to {change} for {who}. Approve or reject it on their staff record."),
 }
 
 
 def queue(template, channel, to, *, obj=None, recipient_user=None, link="", **context):
     """Queue a notification; it is dispatched after the surrounding transaction commits."""
     subject, body = TEMPLATES[template]
+    if "trn" in context:  # SMS may reach a wrong number: never send the full TRN
+        context["trn_tail"] = str(context["trn"])[-3:]
     note = Notification.objects.create(
         channel=channel,
         to=to or "",

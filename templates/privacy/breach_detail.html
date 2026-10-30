@@ -1,9 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="flex flex-wrap items-center gap-2 mb-1"><h1 class="font-mono">{{ b.reference }}</h1><span class="b-grey">{{ b.get_status_display }}</span>{% if b.reported_to_commissioner_at %}<span class="b-green">Reported {{ b.reported_to_commissioner_at|date:"j M Y H:i" }}</span>{% elif b.report_overdue %}<span class="b-red">Report overdue</span>{% else %}<span class="b-amber">Report by {{ b.report_deadline|date:"j M Y H:i" }} ({{ b.hours_left }} h)</span>{% endif %}</div>
-<p class="text-sm text-slate-500 mb-4">{{ b.title }}</p>
+<p class="text-sm text-slate-500 mb-2">{{ b.title }}</p>
+<div class="flex flex-wrap gap-2 items-center mb-4">{% if b.subjects_notified_at %}<span class="b-green">People affected told {{ b.subjects_notified_at|date:"j M Y H:i" }}</span>{% elif b.subjects_notice_overdue %}<span class="b-red">Notice to people affected overdue</span>{% elif b.subjects_affected %}<span class="b-amber">Tell the people affected by {{ b.report_deadline|date:"j M Y H:i" }}</span>{% endif %}
+  <a class="btn-secondary btn-sm" href="{% url 'privacy:breach-notice' b.pk 'commissioner' %}">Draft notice to the Commissioner</a><a class="btn-secondary btn-sm" href="{% url 'privacy:breach-notice' b.pk 'subjects' %}">Draft notice to people affected</a></div>
 <form method="post" class="card card-b grid md:grid-cols-2 gap-3 max-w-4xl">{% csrf_token %}
-  {% for f in form %}<div class="{% if f.name in 'description actions title' %}md:col-span-2{% endif %}"><label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>{% endfor %}
+  {% for f in form %}<div class="{% if f.name in 'description actions title likely_consequences' %}md:col-span-2{% endif %}"><label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>{% endfor %}
   {% if can_edit %}<div class="md:col-span-2"><button class="btn-primary">Save</button></div>{% endif %}
 </form>
 {% endblock %}

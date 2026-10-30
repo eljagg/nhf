@@ -55,6 +55,8 @@ class DataSubjectRequest(models.Model):
         ("correction", "Correct my data"),
         ("objection", "Object to / restrict processing"),
         ("erasure", "Delete my data"),
+        ("automated", "Review a decision made automatically"),
+        ("marketing", "Stop direct marketing"),
     ]
     STATUSES = [("open", "Open"), ("in_progress", "In progress"), ("completed", "Completed"), ("refused", "Refused (with reasons)")]
     CHANNELS = [("counter", "At a centre"), ("email", "E-mail"), ("letter", "Letter"), ("phone", "Telephone")]
@@ -115,6 +117,7 @@ class Breach(models.Model):
     reported_to_commissioner_at = models.DateTimeField(null=True, blank=True)
     subjects_notified_at = models.DateTimeField(null=True, blank=True)
     actions = models.TextField(blank=True, help_text="Containment and remedial actions taken.")
+    likely_consequences = models.TextField(blank=True, help_text="Likely consequences for the people affected (required in the notice to the Commissioner).")
     logged_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -141,6 +144,35 @@ class Breach(models.Model):
     def hours_left(self):
         """Hours until the reporting deadline (negative when overdue)."""
         return int((self.report_deadline - timezone.now()).total_seconds() // 3600)
+
+    @property
+    def subjects_notice_overdue(self):
+        """People affected must be told within the same window."""
+        return self.subjects_notified_at is None and self.subjects_affected > 0 and timezone.now() > self.report_deadline
+
+
+class ImpactAssessment(models.Model):
+    """Annual data protection impact assessment covering all personal data the Fund holds (submitted to the Commissioner)."""
+
+    RISK = [("low", "Low"), ("medium", "Medium"), ("high", "High")]
+    STATUSES = [("draft", "Draft"), ("approved", "Approved by the DPO"), ("submitted", "Submitted to the Information Commissioner")]
+    year = models.PositiveSmallIntegerField(unique=True)
+    scope = models.TextField(help_text="Systems, processing activities and data covered.")
+    risks = models.TextField(help_text="Risks to the people whose data is processed.")
+    measures = models.TextField(help_text="Measures that address each risk.")
+    residual_risk = models.CharField(max_length=6, choices=RISK, default="medium")
+    status = models.CharField(max_length=10, choices=STATUSES, default="draft")
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    approved_at = models.DateTimeField(null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-year"]
+
+    def __str__(self):
+        return f"Impact assessment {self.year}"
 
 
 class RetentionRun(models.Model):

@@ -2,7 +2,7 @@
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
   <div><h1>Directory sign-in</h1><p class="text-sm text-slate-500">Active Directory (LDAPS) and Microsoft Entra ID single sign-on. Roles come from directory groups and are refreshed at every sign-in and nightly.</p></div>
-  <a class="btn-secondary" href="/backoffice/directory/groupmapping/">Edit group mappings</a>
+  <a class="btn-secondary" href="/backoffice/directory/groupmapping/">Group mappings</a>
 </div>
 <div class="grid xl:grid-cols-2 gap-5">
   <div class="card"><div class="card-h"><h2>Active Directory</h2>{% if ldap.ENABLED %}{% if ldap_mock %}<span class="b-amber">Demonstration directory</span>{% else %}<span class="b-green">Enabled</span>{% endif %}{% else %}<span class="b-grey">Off</span>{% endif %}</div>

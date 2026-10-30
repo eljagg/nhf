@@ -2,7 +2,7 @@
 
 from django import forms
 
-from .models import Breach, DataSubjectRequest
+from .models import Breach, DataSubjectRequest, ImpactAssessment
 
 
 class DateTimeInput(forms.DateTimeInput):
@@ -59,6 +59,7 @@ class BreachForm(forms.ModelForm):
             "contained_at",
             "reported_to_commissioner_at",
             "subjects_notified_at",
+            "likely_consequences",
             "actions",
         ]
         widgets = {
@@ -69,10 +70,22 @@ class BreachForm(forms.ModelForm):
             "subjects_notified_at": DateTimeInput(),
             "description": forms.Textarea(attrs={"rows": 3}),
             "actions": forms.Textarea(attrs={"rows": 3}),
+            "likely_consequences": forms.Textarea(attrs={"rows": 2}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name in ("discovered_at", "occurred_at", "contained_at", "reported_to_commissioner_at", "subjects_notified_at"):
             self.fields[name].input_formats = ["%Y-%m-%dT%H:%M"]
+        _style(self)
+
+
+class ImpactAssessmentForm(forms.ModelForm):
+    class Meta:
+        model = ImpactAssessment
+        fields = ["scope", "risks", "measures", "residual_risk"]
+        widgets = {f: forms.Textarea(attrs={"rows": 9}) for f in ("scope", "risks", "measures")}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         _style(self)

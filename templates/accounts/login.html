@@ -5,6 +5,7 @@
 <p class="text-sm text-white/75 mt-1 mb-6">Use your NHF staff account.</p>
 {% if idle %}<div class="glass-msg glass-msg-warn mb-4" role="status">You were signed out after a period of inactivity.</div>{% endif %}
 {% if suspended %}<div class="glass-msg glass-msg-error mb-4" role="alert">Your account has been suspended. Contact your manager or the application administrator.</div>{% endif %}
+{% if revoked %}<div class="glass-msg glass-msg-error mb-4" role="alert">Your network account is no longer enabled for this system, so you have been signed out. Contact the ICT service desk.</div>{% endif %}
 {% if directory_error %}<div class="glass-msg glass-msg-error mb-4" role="alert">{{ directory_error }}</div>{% elif form.non_field_errors %}<div class="glass-msg glass-msg-error mb-4" role="alert">{{ form.non_field_errors|join:" " }}</div>{% endif %}
 {% for m in messages %}<div class="glass-msg {% if m.tags == 'error' %}glass-msg-error{% else %}glass-msg-warn{% endif %} mb-4" role="status">{{ m }}</div>{% endfor %}
 {% if oidc_enabled %}<a class="glass-btn-ms w-full mb-4" href="{% url 'oidc:login' %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}"><span aria-hidden="true" class="ms-logo"><i></i><i></i><i></i><i></i></span>{{ oidc_label }}</a>

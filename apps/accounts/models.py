@@ -43,6 +43,18 @@ class User(AbstractUser):
     suspended_until = models.DateTimeField(null=True, blank=True, help_text="Blank: until reinstated.")
     suspension_reason = models.CharField(max_length=300, blank=True)
     suspended_by = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    deactivated_at = models.DateTimeField(null=True, blank=True, help_text="When the account was last disabled; drives retention of staff ID records.")
+    deactivated_by_directory = models.BooleanField(
+        default=False, help_text="Disabled because the directory said so (re-enabled automatically if the directory enables it again)."
+    )
+
+    def save(self, *args, **kwargs):
+        if not self.is_active and self.deactivated_at is None:
+            self.deactivated_at = timezone.now()
+        elif self.is_active and self.deactivated_at is not None:
+            self.deactivated_at = None
+            self.deactivated_by_directory = False
+        super().save(*args, **kwargs)
 
     def set_password(self, raw_password):
         """Record when the password changed; the new hash is added to the password history on save."""
@@ -93,3 +105,27 @@ class TemporaryRole(models.Model):
         """True between start and expiry unless revoked."""
         now = timezone.now()
         return self.revoked_at is None and self.starts_at <= now < self.expires_at
+
+
+class RoleChangeRequest(models.Model):
+    """Two-person rule for roles on local accounts: an application administrator asks, a manager (not the requester,
+    not the person concerned) approves. Directory accounts get their roles from AD/Entra groups instead."""
+
+    ACTIONS = [("add", "Add role"), ("remove", "Remove role")]
+    STATUSES = [("pending", "Waiting for approval"), ("approved", "Approved and applied"), ("rejected", "Rejected"), ("cancelled", "Cancelled")]
+    target = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="role_requests")
+    role = models.CharField(max_length=20)
+    action = models.CharField(max_length=6, choices=ACTIONS)
+    reason = models.CharField(max_length=300)
+    status = models.CharField(max_length=10, choices=STATUSES, default="pending")
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    requested_at = models.DateTimeField(auto_now_add=True)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["-requested_at"]
+
+    def __str__(self):
+        return f"{self.get_action_display()} {self.role} for {self.target}"

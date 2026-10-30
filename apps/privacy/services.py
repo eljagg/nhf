@@ -2,14 +2,16 @@
 
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.core import audit
-from apps.core.models import Notification, Parameter
+from apps.core.models import Notification, Parameter, StoredImage
 from apps.interactions.services import log
 
-from .models import RetentionRun
+from .models import ProcessingActivity, RetentionRun
 
 
 def member_export(member):
@@ -38,6 +40,7 @@ def member_export(member):
             "registered_at": d(member.registered_at),
             "consent_recorded_at": d(member.consent_at),
             "privacy_notice_version": member.consent_version,
+            "processing_restricted_since": d(member.processing_restricted_at),
             "status": member.get_status_display(),
         },
         "guardian": {"name": guardian.full_name, "relationship": guardian.relationship, "trn": guardian.trn, "phone": guardian.phone} if guardian else None,
@@ -105,6 +108,9 @@ def retention_candidates():
         ),
         "access_log": AccessLog.objects.filter(at__lt=now - timedelta(days=log_days)),
         "notifications": Notification.objects.filter(created_at__lt=now - timedelta(days=365)),
+        "staff_id_records": get_user_model()
+        .objects.filter(is_active=False, deactivated_at__lt=now - timedelta(days=int(Parameter.get("staff-id-retention-days"))))
+        .filter(Q(id_document__isnull=False) | Q(photo__isnull=False) | ~Q(id_number="")),
     }
 
 
@@ -142,5 +148,120 @@ def run_retention(*, dry_run=False, user=None):
                 Application.objects.filter(pk__in=ids).update(anonymised_at=timezone.now(), trn="", **ANONYMISE_FIELDS)
             c["access_log"].delete()
             c["notifications"].delete()
+            for user in c["staff_id_records"]:
+                erase_staff_identity(user)
         audit.record("privacy.retention_run", None, f"Retention sweep: {results}", actor=user, **results)
     return RetentionRun.objects.create(dry_run=dry_run, results=results, run_by=user)
+
+
+def erase_staff_identity(user):
+    """Remove a former staff member's ID number, ID picture and photo (the account and its audit history stay)."""
+    images = [i for i in (user.id_document_id, user.photo_id) if i]
+    type(user).objects.filter(pk=user.pk).update(id_number="", id_type="", id_expiry=None, id_document=None, photo=None)
+    StoredImage.objects.filter(pk__in=images).delete()
+    audit.record("privacy.staff_identity_erased", user, f"ID number, ID picture and photo of former staff account {user.username} erased (retention)")
+
+
+def restrict_processing(member, *, reason, user, dsr=None):
+    """Objection / restriction: applications for this member cannot be approved until the restriction is lifted."""
+    member.processing_restricted_at = timezone.now()
+    member.processing_restriction_reason = reason[:300]
+    member.save(update_fields=["processing_restricted_at", "processing_restriction_reason"])
+    audit.record(
+        "privacy.processing_restricted",
+        member,
+        f"Processing of member {member.member_number} restricted: {reason}",
+        actor=user,
+        dsr=dsr.reference if dsr else "",
+    )
+
+
+def lift_restriction(member, *, note, user, dsr=None):
+    member.processing_restricted_at = None
+    member.processing_restriction_reason = ""
+    member.save(update_fields=["processing_restricted_at", "processing_restriction_reason"])
+    audit.record(
+        "privacy.restriction_lifted", member, f"Restriction on member {member.member_number} lifted: {note}", actor=user, dsr=dsr.reference if dsr else ""
+    )
+
+
+def dpo_contact():
+    """Name, e-mail and phone of the DPO as configured, joined for notices."""
+    parts = [Parameter.get("dpo-name"), Parameter.get("dpo-email"), Parameter.get("dpo-phone")]
+    return ", ".join(p for p in parts if p) or "Data Protection Officer, National Health Fund (contact details not yet set in the back office)"
+
+
+def breach_notice(breach, audience):
+    """Draft notice text for the Information Commissioner or for the people affected (DPA 2020 breach notification)."""
+    when = timezone.localtime(breach.discovered_at).strftime("%d %B %Y at %H:%M")
+    occurred = timezone.localtime(breach.occurred_at).strftime("%d %B %Y at %H:%M") if breach.occurred_at else "not yet established"
+    reg = Parameter.get("dpa-registration-number")
+    if audience == "commissioner":
+        lines = [
+            "Notification of a personal data breach — Data Protection Act 2020",
+            "",
+            f"Data controller: National Health Fund{f' (registration {reg})' if reg else ''}",
+            f"Reference: {breach.reference}",
+            f"Became aware: {when}. Breach occurred: {occurred}.",
+            "",
+            "1. Facts of the breach",
+            breach.description,
+            "",
+            "2. Nature and scale",
+            f"Personal data concerned: {breach.data_categories}. Estimated number of people affected: {breach.subjects_affected}. Severity assessed as {breach.get_severity_display().lower()}.",
+            "",
+            "3. Likely consequences",
+            breach.likely_consequences or "Under assessment.",
+            "",
+            "4. Measures taken or proposed",
+            breach.actions or "Under way.",
+            "",
+            f"5. Data Protection Officer: {dpo_contact()}",
+        ]
+    else:
+        lines = [
+            "Important: about your personal information held by the National Health Fund",
+            "",
+            f"On {when} the National Health Fund became aware of an incident affecting personal information. Our reference is {breach.reference}.",
+            "",
+            f"What happened: {breach.description}",
+            "",
+            f"Information involved: {breach.data_categories}.",
+            "",
+            f"What we have done: {breach.actions or 'We are containing the incident and will write again with more information.'}",
+            "",
+            f"If you have questions, contact the Fund's Data Protection Officer: {dpo_contact()}. You may also contact the Office of the Information Commissioner.",
+        ]
+    return "\n".join(lines)
+
+
+def draft_impact_assessment(year):
+    """Starting text for this year's impact assessment, built from the processing register and the controls in place."""
+    acts = ProcessingActivity.objects.all()
+    scope = "Member Registration System and the personal data it processes:\n" + "\n".join(
+        f"- {a.name}: {a.data_categories} ({'sensitive' if a.sensitive else 'not sensitive'}); recipients: {a.recipients or 'none outside the Fund'}; retention: {a.retention}"
+        for a in acts
+    )
+    risks = "\n".join(
+        [
+            "- Unauthorised access to health information by staff without a need to know.",
+            "- Account takeover through stolen passwords.",
+            "- Loss or disclosure of identity data (TRN, NIS, ID documents) through a breach or lost device.",
+            "- Inaccurate member data leading to wrong eligibility decisions.",
+            "- Keeping data longer than necessary.",
+            "- Over-sharing with third parties (claims adjudicator, card production, councils).",
+            "- Unavailability of the service at the counters.",
+        ]
+    )
+    measures = "\n".join(
+        [
+            "- Role-based access; medical conditions hidden from roles that do not process eligibility; page-by-page access log and bulk-viewing alerts.",
+            "- Two-step sign-in for every staff account; Active Directory with hourly sync and in-session re-check; account suspension.",
+            "- Field encryption for TRN payloads, notes, ID numbers and images; TLS; security headers; lockout and alerts.",
+            "- Name and date of birth only from the TRN service; change forms; doctor and nurse confirmed with their council.",
+            "- Daily retention sweep (rejected applications, access log, notifications, former staff ID records).",
+            "- Processing register with recipients; data-sharing and processing agreements; consent recorded with notice version.",
+            "- Breach register with 72-hour clock; data-subject requests with 30-day clock; restriction of processing on objection.",
+        ]
+    )
+    return {"year": year, "scope": scope, "risks": risks, "measures": measures}

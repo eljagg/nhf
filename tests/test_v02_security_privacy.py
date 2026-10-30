@@ -91,7 +91,7 @@ def test_consent_required_before_approval(client, agent, taj, doctor, run_commit
         },
     )
     app.refresh_from_db()
-    assert app.consent_given and app.consent_at and app.consent_version == "2026-10" and app.status == "ready"
+    assert app.consent_given and app.consent_at and app.consent_version == Parameter.get("privacy-notice-version") and app.status == "ready"
     member = services.approve(app.pk, user=agent).member
     assert member.consent_at is not None
 
@@ -136,19 +136,22 @@ def test_failed_sign_in_alert(client, agent):
 
 
 def test_bulk_viewing_alert(client, agent, taj, doctor, run_commits):
-    Parameter.objects.update_or_create(key="alert-bulk-view-per-hour", defaults={"value": 1})
+    from apps.security.services import check_bulk_viewing
+
+    Parameter.objects.update_or_create(key="alert-bulk-view-per-hour", defaults={"value": 10})  # 10 is the floor
     a = approved_member(agent, doctor, run_commits)
-    b_app = complete(start(agent, run_commits, "100200303", "Winston", "Grant", date(1958, 11, 20)), agent, doctor, "diabetes")
-    b = services.approve(b_app.pk, user=agent).member
     login(client, agent)
     client.get(f"/members/{a.member_number}/")
-    client.get(f"/members/{b.member_number}/")
+    assert AccessLog.objects.filter(user=agent, object_type="member", object_ref=a.member_number).exists()  # page views are logged
+    for n in range(11):
+        AccessLog.objects.create(user=agent, method="GET", path=f"/members/{n}/", status=200, object_type="member", object_ref=f"20000001{n:02d}")
+    check_bulk_viewing(agent)
     assert SecurityAlert.objects.filter(kind="bulk_viewing", user=agent).exists()
 
 
 def test_trn_failure_alert(agent, taj, run_commits):
-    Parameter.objects.update_or_create(key="alert-failed-trn-per-hour", defaults={"value": 1})
-    for _ in range(2):
+    Parameter.objects.update_or_create(key="alert-failed-trn-per-hour", defaults={"value": 3})  # 3 is the floor
+    for _ in range(4):
         start(agent, run_commits, "100999999", "No", "Body", date(1980, 1, 1))
     assert SecurityAlert.objects.filter(kind="trn_failures", user=agent).exists()
 

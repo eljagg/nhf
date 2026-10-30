@@ -30,10 +30,15 @@ class StaffForm(forms.ModelForm):
         fields = ["first_name", "last_name", "email", "job_title", "phone", "staff_number", "centre", "id_type", "id_number", "id_expiry"]
         widgets = {"id_expiry": forms.DateInput(attrs={"type": "date"})}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, editor=None, **kwargs):
         super().__init__(*args, **kwargs)
         for f in self.fields.values():
             f.widget.attrs.setdefault("class", "inp")
+        from .admin import is_privileged
+
+        if self.instance.pk and is_privileged(self.instance) and not (editor and editor.is_superuser):
+            self.fields["email"].disabled = True
+            self.fields["email"].help_text = "Privileged account: only a superuser can change the e-mail (password resets go there)."
         self.fields["id_number"].widget = forms.TextInput(attrs={"class": "inp font-mono", "autocomplete": "off"})
         if self.instance.source != "local":
             for name in ("first_name", "last_name", "email"):
@@ -51,7 +56,7 @@ def _status(u):
     if u.is_suspended:
         return "suspended"
     if not u.is_active:
-        return "disabled"
+        return "dir_disabled" if u.source != "local" else "disabled"
     if u.is_temporarily_locked:
         return "locked"
     return "active"
@@ -84,12 +89,32 @@ def staff_detail(request, user_id):
     """Profile; administrators and managers edit details, photo and ID, and suspend or reinstate."""
     target = get_object_or_404(get_user_model(), pk=user_id)
     can_edit = has_role(request.user, *EDIT_ROLES)
-    form = StaffForm(request.POST or None, instance=target)
+    form = StaffForm(request.POST or None, instance=target, editor=request.user)
+    old_email = target.email
     if request.method == "POST":
         if not can_edit:
             return redirect("accounts:staff-detail", user_id=target.pk)
         if form.is_valid():
             form.save()
+            if "email" in form.changed_data:
+                audit.record(
+                    "staff.email_changed",
+                    target,
+                    f"E-mail of {target.username} changed from {old_email or '—'} to {target.email or '—'}",
+                    old=old_email,
+                    new=target.email,
+                )
+                if old_email:
+                    from django.core.mail import send_mail
+
+                    send_mail(
+                        "Your NHF account e-mail was changed",
+                        f"The e-mail address on your Member Registration System account was changed by {request.user.display_name()}. "
+                        "If you did not expect this, contact the ICT service desk immediately.",
+                        None,
+                        [old_email],
+                        fail_silently=True,
+                    )
             audit.record("staff.updated", target, f"Staff record of {target.username} updated", fields=list(form.changed_data))
             messages.success(request, "Staff details saved.")
             return redirect("accounts:staff-detail", user_id=target.pk)
@@ -108,6 +133,10 @@ def staff_detail(request, user_id):
             "can_suspend": can_edit and target.pk != request.user.pk,
             "can_see_id": has_role(request.user, *images.VIEW_ROLES["staff_id"]),
             "roles": sorted(ROLES.get(r, (r,))[0] for r in role_names(target)),
+            "role_catalogue": [(k, v[0]) for k, v in ROLES.items()],
+            "role_requests": target.role_requests.select_related("requested_by", "decided_by")[:20],
+            "can_request_roles": can_request_roles(request.user) and target.pk != request.user.pk and target.source == "local",
+            "approver_ok": {r.pk: can_approve(request.user, r) for r in target.role_requests.filter(status="pending")},
             "page_title": target.display_name(),
         },
     )
@@ -217,3 +246,77 @@ def my_photo(request):
     audit.record("staff.photo_updated", request.user, f"{request.user.username} updated their profile photo")
     messages.success(request, "Profile photo saved.")
     return redirect("accounts:me")
+
+
+def can_request_roles(user):
+    return has_role(user, "ict_admin")
+
+
+def can_approve(user, req):
+    """A manager who is neither the requester nor the person concerned."""
+    return has_role(user, "manager") and user.pk not in (req.requested_by_id, req.target_id)
+
+
+@require_POST
+@role_required("ict_admin")
+def request_role_change(request, user_id):
+    """Ask for a role to be added to or removed from a local account."""
+    from .models import RoleChangeRequest
+
+    target = get_object_or_404(get_user_model(), pk=user_id)
+    role, action, reason = request.POST.get("role", ""), request.POST.get("action", ""), request.POST.get("reason", "").strip()[:300]
+    if target.source != "local":
+        messages.error(request, "This account's roles come from the directory groups. Change them in Active Directory / Entra ID.")
+    elif target.pk == request.user.pk:
+        messages.error(request, "You cannot request a role change for your own account.")
+    elif role not in ROLES or action not in ("add", "remove") or not reason:
+        messages.error(request, "Choose the role, add or remove, and give a reason.")
+    elif RoleChangeRequest.objects.filter(target=target, role=role, status="pending").exists():
+        messages.info(request, "A request for that role is already waiting for approval.")
+    else:
+        req = RoleChangeRequest.objects.create(target=target, role=role, action=action, reason=reason, requested_by=request.user)
+        audit.record("security.role_change_requested", target, f"{request.user.username} asked to {action} {role} for {target.username}: {reason}")
+        notify_role(
+            "manager",
+            "role-change-requested",
+            obj=target,
+            link=f"/accounts/staff/{target.pk}/",
+            who=target.display_name(),
+            change=f"{req.get_action_display().lower()} {ROLES[role][0]}",
+            by=request.user.display_name(),
+        )
+        messages.success(request, "Request sent. A manager must approve it before it takes effect.")
+    return redirect("accounts:staff-detail", user_id=target.pk)
+
+
+@require_POST
+@role_required("manager", "ict_admin")
+def decide_role_change(request, pk):
+    """Approve (applies the change) or reject a pending request; the requester may cancel their own."""
+    from django.contrib.auth.models import Group
+
+    from .models import RoleChangeRequest
+
+    req = get_object_or_404(RoleChangeRequest, pk=pk, status="pending")
+    decision = request.POST.get("decision")
+    note = request.POST.get("note", "").strip()[:300]
+    if decision == "cancel" and req.requested_by_id == request.user.pk:
+        req.status = "cancelled"
+    elif decision in ("approve", "reject") and can_approve(request.user, req):
+        req.status = "approved" if decision == "approve" else "rejected"
+        if decision == "approve":
+            group = Group.objects.get(name=req.role)
+            (req.target.groups.add if req.action == "add" else req.target.groups.remove)(group)  # roles are re-read on every request
+    else:
+        messages.error(request, "Only a manager who did not make the request, and is not the person concerned, can decide it.")
+        return redirect("accounts:staff-detail", user_id=req.target_id)
+    req.decided_by, req.decided_at, req.decision_note = request.user, timezone.now(), note
+    req.save()
+    audit.record(
+        f"security.role_change_{req.status}",
+        req.target,
+        f"{req} {req.get_status_display().lower()} by {request.user.username}{': ' + note if note else ''}",
+        requested_by=req.requested_by.username if req.requested_by else "",
+    )
+    messages.success(request, f"Request {req.get_status_display().lower()}.")
+    return redirect("accounts:staff-detail", user_id=req.target_id)

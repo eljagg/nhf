@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4"><div><h1>Impact assessments</h1><p class="text-sm text-slate-500">The Data Protection Act requires an annual data protection impact assessment of all personal data the Fund holds, submitted to the Information Commissioner.</p></div>
+{% if can_edit and not has_current %}<form method="post">{% csrf_token %}<button class="btn-primary" name="start" value="1">Start the {{ year }} assessment</button></form>{% endif %}</div>
+<div class="card"><table class="tbl"><thead><tr><th>Year</th><th>Status</th><th>Residual risk</th><th>Approved</th><th>Submitted</th></tr></thead><tbody>
+{% for d in rows %}<tr><td><a href="{% url 'privacy:dpia-detail' d.year %}">{{ d.year }}</a></td><td>{% if d.status == "submitted" %}<span class="b-green">{{ d.get_status_display }}</span>{% elif d.status == "approved" %}<span class="b-brand">{{ d.get_status_display }}</span>{% else %}<span class="b-amber">Draft</span>{% endif %}</td><td>{{ d.get_residual_risk_display }}</td><td>{{ d.approved_at|date:"j M Y"|default:"—" }}</td><td>{{ d.submitted_at|date:"j M Y"|default:"—" }}</td></tr>
+{% empty %}<tr><td colspan="5" class="text-slate-500">None yet. Starting one fills in the scope from the processing register and the safeguards already in place, for the DPO to review.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

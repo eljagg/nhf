@@ -57,14 +57,15 @@ One service from this repository plus a PostgreSQL database. Variables:
 |---|---|
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
 | `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(50))"` |
-| `FIELD_ENCRYPTION_KEY` | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
-| `DEMO_MODE` | `1` |
+| `FIELD_ENCRYPTION_KEY` | required in production: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. Never change it; to rotate, set `NEW,OLD`, deploy, run `python manage.py rotate_field_keys` |
+| `DEMO_MODE` | `1` on the demonstration environment only — production defaults to off (no demo data, simulator or demo directory) |
 | `DEMO_DATA` | `1` (seed once) — `reseed` rebuilds the demo data on the next deploy |
 | `DEMO_PASSWORD` | password for the demo users |
 | `PORTAL_SHARED_SECRET` | any long random string |
 | `CELERY_TASK_ALWAYS_EAGER` | `1` when Redis is attached but no worker service runs |
 | `PRODUCT_NAME` | name shown on screens (default `Registry Platform`) |
 | `BUILT_BY` | optional credit on the sign-in footer, e.g. `AiShiftCode` (blank shows nothing) |
+| `TRUSTED_PROXY_COUNT` | `1` (production default) — proxies in front of the app; only their X-Forwarded-For entry is trusted |
 | `MFA_REQUIRED` | `1` (default) — two-step sign-in for every staff account |
 | `MFA_DEMO_PRIVILEGED_ONLY` | `1` lets counter roles skip two-step sign-in while `DEMO_MODE=1` (managers, administrators and the DPO still need it) |
 

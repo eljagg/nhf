@@ -95,6 +95,8 @@ def _server():
 
 
 def _connect(user, password):
+    if is_mock() and not settings.DEMO_MODE:
+        raise DirectoryError("The demonstration directory (mock://) is only available with DEMO_MODE=1.")
     if is_mock():
         conn = _mock_connection(user, password)
     else:
@@ -139,10 +141,25 @@ def find_user(username, conn=None):
     if is_mock():
         flt = f"(sAMAccountName={escape_filter_chars(username)})"
     conn.search(_search_base(), flt, search_scope=SUBTREE, attributes=ALL_ATTRIBUTES if is_mock() else USER_ATTRS, size_limit=2)
-    if len(conn.entries) != 1:
+    _check_result(conn)
+    found = [e for e in (conn.response or []) if e.get("type", "searchResEntry") == "searchResEntry" and e.get("dn")]
+    if len(found) > 1:
+        raise DirectoryError(f"More than one directory account matches '{username}'; check LDAP_USER_FILTER.")
+    if not found:
+        # Before concluding "this person has left", make sure the search itself can see accounts at all: a wrong
+        # search base or a service account that lost its read rights must not look like everyone leaving.
+        conn.search(_search_base(), "(objectClass=user)", search_scope=SUBTREE, attributes=["objectClass"], size_limit=1)
+        _check_result(conn)
+        if not [e for e in (conn.response or []) if e.get("dn")]:
+            raise DirectoryError("The user search base returned no accounts at all: check LDAP_USER_SEARCH_BASE and the service account's read rights.")
         return None
-    entry = conn.response[0]
-    return entry["dn"], entry["attributes"]
+    return found[0]["dn"], found[0]["attributes"]
+
+
+def _check_result(conn):
+    result = conn.result or {}
+    if result.get("result", 0) not in (0, 4):  # 0 success, 4 size limit reached (entries still returned)
+        raise DirectoryError(f"Directory search failed: {result.get('description', 'unknown error')}")
 
 
 def _groups(conn, dn, attrs):

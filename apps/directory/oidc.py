@@ -19,6 +19,7 @@ from django.core.cache import cache
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from apps.core import audit
 
@@ -152,6 +153,8 @@ def callback(request):
         user = provision(identity_from_claims(claims))
         if user.is_suspended:
             raise NotAuthorised("This account is suspended. Contact your manager or the application administrator.")
+        if user.is_temporarily_locked:
+            raise NotAuthorised("This account is temporarily locked. Contact the application administrator.")
     except (OidcError, NotAuthorised, jwt.PyJWTError, requests.RequestException, KeyError) as exc:
         log.warning("Entra ID sign-in failed: %s", exc)
         audit.record("auth.sso_failed", None, f"Entra ID sign-in failed: {str(exc)[:200]}")
@@ -162,4 +165,5 @@ def callback(request):
     request.session["idp_mfa"] = "mfa" in amr
     audit.record("auth.login", user, f"{user.username} signed in with Entra ID{' (Microsoft MFA)' if 'mfa' in amr else ''}", actor=user, sso=True, amr=amr)
     nxt = stash.get("next") or "/"
-    return redirect(nxt if nxt.startswith("/") and not nxt.startswith("//") else "/")
+    safe = url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure())
+    return redirect(nxt if safe else "/")

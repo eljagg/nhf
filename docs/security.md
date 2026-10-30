@@ -1,4 +1,4 @@
-# Security controls — v0.2.2
+# Security controls — v0.2.3
 
 For NHF's ICT team and the penetration testers. Mapped to OWASP ASVS 4.0.3 Level 2 chapters and to the tender rows
 (UM, DM, AL, CS). Each control names where it lives so it can be checked in code or on screen.
@@ -96,4 +96,27 @@ session revocation, password-reset token reuse, and access to `/privacy/` and `/
 | Stored encrypted (Fernet, field key) in PostgreSQL, not in a web-served folder; served only through `/images/<id>/` after a role check | `StoredImage`, `core:image` |
 | Staff ID pictures: application administrators and managers only, `Cache-Control: no-store`, every view audited; ID numbers encrypted, masked to the last four characters for auditors | `VIEW_ROLES`, `User.id_number` |
 | Council register calls: HTTPS only, API key from environment, timeout, circuit breaker, logged in the Integration Hub | `apps/doctors/registers.py` |
+
+## v0.2.3 review
+
+An independent code review in October 2026 found 18 issues; a second pass confirmed the fixes and found 4 more in the
+new code, also fixed (one critical: enrolling a new authenticator with only a
+password). All are fixed and each has a regression test in `tests/test_v023_security_fixes.py`. Dependency scans
+(`pip-audit`, `npm audit`), `bandit` and `manage.py check --deploy` are clean.
+
+| Control | Where |
+|---|---|
+| Existing second factor required before enrolling or replacing an authenticator | `mfa_setup` |
+| Temporary-role grant matrix; no self-grants; privileged roles never granted temporarily | `GRANTABLE` in `apps/accounts/views.py` |
+| Back office: no self-edit; superuser, permissions, privileged e-mail/password only by a superuser; changes audited; sign-in through the staff page | `apps/accounts/admin.py`, `config/urls.py` |
+| Client address from the trusted proxy entry only | `apps/core/net.py`, `TRUSTED_PROXY_COUNT` |
+| Demo features off in production unless `DEMO_MODE=1`; field key required; key rotation | `config/settings/prod.py`, `apps/core/crypto.py`, `rotate_field_keys` |
+| Lock and suspension end live sessions on every sign-in route | `MFAEnforcementMiddleware`, `oidc.py`, `backends.py` |
+| AD account state re-checked every 15 minutes during a session; hourly sync | `apps/directory/middleware.py` |
+| Portal requests: HMAC over timestamp + nonce + body, 5-minute window, nonce single use | `apps/intake/services.py` |
+| Two-person rule for roles (request by administrator, approval by a different manager); roles, group permissions and group mappings read-only in the back office except for a superuser | `apps/accounts/staff.py`, `admin.py`, `bootstrap_roles.py` |
+| Security parameters bounded in code and editable only by administrators / DPO, with audit | `PARAMETER_LIMITS` in `apps/core/models.py`, `apps/core/admin.py` |
+| Undecryptable values preserved on save; all-or-nothing key rotation | `apps/core/crypto.py`, `rotate_field_keys` |
+| Directory mis-configuration cannot mass-disable accounts (empty or failed search = unreachable; 5% hold) | `apps/directory/ldap.py`, `services.py` |
+| API schema behind sign-in; absolute 10-hour session; CSV formula neutralising; per-user lookup limits; 25 MB request cap; Permissions-Policy; no-store on signed-in pages | settings, `apps/core/*` |
 

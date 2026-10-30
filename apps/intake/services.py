@@ -2,9 +2,11 @@
 
 import hashlib
 import hmac
+import time
 from datetime import date
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
@@ -22,13 +24,32 @@ class SubmissionError(ValueError):
     """The portal payload cannot be accepted."""
 
 
-def verify_signature(body: bytes, signature: str) -> bool:
-    """HMAC-SHA256 of the raw body with the shared secret agreed with the portal."""
+MAX_SKEW_SECONDS = 300
+
+
+def signing_string(timestamp: str, nonce: str, body: bytes) -> bytes:
+    return f"{timestamp}.{nonce}.".encode() + body
+
+
+def verify_signature(body: bytes, signature: str, timestamp: str = "", nonce: str = "") -> str:
+    """Check the portal's HMAC-SHA256 over "<timestamp>.<nonce>.<body>".
+
+    Returns "" when valid, otherwise the reason. A request older or newer than five minutes, or a nonce already seen,
+    is refused, so a captured request cannot be replayed.
+    """
     secret = settings.PORTAL_SHARED_SECRET
-    if not secret or not signature:
-        return False
-    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, signature.removeprefix("sha256="))
+    if not secret or not signature or not timestamp or not nonce:
+        return "missing signature, timestamp or nonce"
+    if not timestamp.isdigit() or abs(time.time() - int(timestamp)) > MAX_SKEW_SECONDS:
+        return "timestamp outside the allowed window"
+    if not (16 <= len(nonce) <= 100) or not all(c.isalnum() or c in "-_" for c in nonce):
+        return "nonce must be 16-100 letters, digits, '-' or '_'"
+    expected = hmac.new(secret.encode(), signing_string(timestamp, nonce, body), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature.removeprefix("sha256=")):
+        return "invalid signature"
+    if not cache.add(f"portal-nonce:{nonce}", 1, MAX_SKEW_SECONDS * 2):
+        return "nonce already used"
+    return ""
 
 
 def online_centre():
@@ -38,8 +59,14 @@ def online_centre():
 
 def receive_portal_submission(payload: dict) -> Application:
     """Turn a doctor-portal submission into an online application; validate the TRN at once (OR10002)."""
+    if not isinstance(payload, dict):
+        raise SubmissionError("body must be a JSON object")
     patient = payload.get("patient") or {}
     doctor = payload.get("doctor") or {}
+    if not isinstance(patient, dict) or not isinstance(doctor, dict):
+        raise SubmissionError("patient and doctor must be objects")
+    if not isinstance(payload.get("conditions", []), list):
+        raise SubmissionError("conditions must be a list")
     kind = payload.get("kind", "new")
     if kind not in ("new", "change"):
         raise SubmissionError("kind must be 'new' or 'change'")

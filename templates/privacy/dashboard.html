@@ -2,8 +2,15 @@
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
   <div><h1>Data protection</h1><p class="text-sm text-slate-500">Data Protection Act 2020 — requests from members, breaches, consent, retention and the processing register.</p></div>
-  <div class="flex gap-2"><a class="btn-secondary" href="{% url 'privacy:dsr-list' %}">Requests</a><a class="btn-secondary" href="{% url 'privacy:breach-list' %}">Breach register</a><a class="btn-secondary" href="{% url 'privacy:register' %}">Processing register</a></div>
+  <div class="flex gap-2"><a class="btn-secondary" href="{% url 'privacy:dsr-list' %}">Requests</a><a class="btn-secondary" href="{% url 'privacy:breach-list' %}">Breach register</a><a class="btn-secondary" href="{% url 'privacy:register' %}">Processing register</a><a class="btn-secondary" href="{% url 'privacy:dpia-list' %}">Impact assessments</a></div>
 </div>
+<div class="card mb-5"><div class="card-h"><h2>Obligations to the Information Commissioner</h2></div><div class="card-b grid md:grid-cols-2 xl:grid-cols-4 gap-3 text-sm">
+  <div>{% if registration.number and not registration.warn %}<span class="b-green">Registered</span>{% elif registration.number %}<span class="b-amber">Renewal due</span>{% else %}<span class="b-red">Registration number not set</span>{% endif %}<p class="mt-1">Registration as a data controller{% if registration.number %}: <span class="font-mono">{{ registration.number }}</span>{% endif %}{% if registration.expiry %} · renew by {{ registration.expiry|date:"j M Y" }} ({{ registration.days }} days){% endif %}</p></div>
+  <div>{% if dpia.status == "submitted" %}<span class="b-green">Submitted</span>{% elif dpia %}<span class="b-amber">{{ dpia.get_status_display }}</span>{% else %}<span class="b-red">Not started</span>{% endif %}<p class="mt-1">Impact assessment {{ year }} — <a href="{% url 'privacy:dpia-list' %}">open</a></p></div>
+  <div>{% if dpo_set %}<span class="b-green">Set</span>{% else %}<span class="b-red">Not set</span>{% endif %}<p class="mt-1">Data Protection Officer contact details (used in breach notices)</p></div>
+  <div>{% if restricted %}<span class="b-amber">{{ restricted }}</span>{% else %}<span class="b-grey">0</span>{% endif %}<p class="mt-1">Members with processing restricted after an objection</p></div>
+  {% if registration.warn or not dpo_set %}<p class="md:col-span-2 xl:col-span-4 text-xs text-slate-500">Set the registration number, renewal date and DPO contact under Parameters in the back office (<span class="font-mono">dpa-registration-number</span>, <span class="font-mono">dpa-registration-expiry</span>, <span class="font-mono">dpo-name</span>, <span class="font-mono">dpo-email</span>, <span class="font-mono">dpo-phone</span>).</p>{% endif %}
+</div></div>
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
   <div class="stat"><div class="stat-n">{{ dsrs|length }}</div><div class="stat-l">Open requests</div></div>
   <div class="stat"><div class="stat-n">{{ breaches|length }}</div><div class="stat-l">Breaches not closed</div></div>
@@ -24,6 +31,7 @@
     <div class="flex justify-between"><span>Rejected / terminated applications to anonymise</span><span class="font-semibold tabular-nums">{{ retention_due.rejected_applications }}</span></div>
     <div class="flex justify-between"><span>Access-log rows past their retention</span><span class="font-semibold tabular-nums">{{ retention_due.access_log }}</span></div>
     <div class="flex justify-between"><span>Notifications older than 12 months</span><span class="font-semibold tabular-nums">{{ retention_due.notifications }}</span></div>
+    <div class="flex justify-between"><span>Former staff: ID records to erase</span><span class="font-semibold tabular-nums">{{ retention_due.staff_id_records }}</span></div>
     <p class="text-xs text-slate-500">Runs automatically every day. Approved members are never removed by the sweep. Periods are set under Parameters in the back office.</p>
     <form method="post" action="{% url 'privacy:retention-run' %}" class="flex gap-2 pt-1">{% csrf_token %}<button class="btn-secondary btn-sm" name="dry_run" value="1">Preview</button><button class="btn-secondary btn-sm" name="dry_run" value="0" data-confirm="Run the retention sweep now? Anonymising is permanent.">Run now</button></form>
   </div></div>

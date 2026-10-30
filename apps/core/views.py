@@ -56,9 +56,7 @@ def notifications(request):
     """In-app inbox (NT10001, NT10004 links to records)."""
     qs = Notification.objects.filter(recipient_user=request.user, channel="inapp")
     page = Paginator(qs, 30).get_page(request.GET.get("page"))
-    outbound = (
-        Notification.objects.exclude(channel="inapp").order_by("-created_at")[:15] if has_role(request.user, "manager", "supervisor", "ict_admin") else []
-    )
+    outbound = Notification.objects.exclude(channel="inapp").order_by("-created_at")[:15] if has_role(request.user, "manager", "supervisor") else []
     return render(request, "core/notifications.html", {"page": page, "outbound": outbound, "page_title": "Inbox"})
 
 

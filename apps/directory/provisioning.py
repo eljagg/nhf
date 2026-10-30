@@ -47,7 +47,9 @@ def provision(identity: DirectoryIdentity):
     """Find or create the account, refresh its details and roles from the directory. Raises NotAuthorised when no role is mapped."""
     user_model = get_user_model()
     if not identity.enabled:
-        user_model.objects.filter(source=identity.source, username__iexact=identity.username).update(is_active=False)
+        user_model.objects.filter(source=identity.source, username__iexact=identity.username, is_active=True).update(
+            is_active=False, deactivated_at=timezone.now(), deactivated_by_directory=True
+        )
         raise NotAuthorised("This account is disabled in the directory.")
     roles, centre = mapped_roles_and_centre(identity.source, identity.groups)
     if not roles:
@@ -58,6 +60,9 @@ def provision(identity: DirectoryIdentity):
         if user is not None and user.source == "local" and user.has_usable_password():
             # Never take over a local (break-glass or demo) account just because a directory name matches it.
             raise NotAuthorised("A local account with this username already exists. Ask the application administrator to link or rename it.")
+    if user is not None and not user.is_active and not user.deactivated_by_directory:
+        # Disabled here by an administrator: a directory sign-in must not quietly switch it back on.
+        raise NotAuthorised("This account has been disabled in the Member Registration System. Contact the application administrator.")
     created = user is None
     if created:
         user = user_model(username=identity.username.lower(), source=identity.source)
@@ -71,6 +76,8 @@ def provision(identity: DirectoryIdentity):
     if centre is not None:
         user.centre = centre
     user.is_active = True
+    user.deactivated_at = None
+    user.deactivated_by_directory = False
     user.is_staff = bool(roles & {"back_office", "ict_admin", "auditor", "dpo"})
     user.directory_synced_at = timezone.now()
     user.save()

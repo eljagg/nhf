@@ -12,7 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.accounts.roles import has_role, role_required
-from apps.core import audit, images
+from apps.core import audit, images, ratelimit
 from apps.core.models import IntegrationRun
 from apps.members.models import Application
 
@@ -165,6 +165,9 @@ def _practitioner(kind, number):
 def check_register(request, kind, number):
     """Check one practitioner against the council register now."""
     p = _practitioner(kind, number)
+    if not ratelimit.enforce(request, "register-check", "limit-register-check-per-hour", "council register checks"):
+        messages.error(request, "You have reached the hourly limit for register checks. Try again later.")
+        return redirect(practitioner_link(p))
     outcome = verify(p, user=request.user)
     text = {
         "confirmed": f"Confirmed from the council register: {p.get_register_status_display()}.",

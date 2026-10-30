@@ -75,7 +75,7 @@ PRODUCT_NAME = env("PRODUCT_NAME", default="Registry Platform")
 BUILT_BY = env("BUILT_BY", default="")
 EDITION_NAME = "Member Registration"
 CLIENT_NAME = "National Health Fund"
-VERSION = "0.2.2"
+VERSION = "0.2.3"
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -119,6 +119,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "apps.core.middleware.RequestIDMiddleware",
+    "apps.core.middleware.SecurityHeadersMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -126,6 +127,7 @@ MIDDLEWARE = [
     "django_otp.middleware.OTPMiddleware",
     "apps.accounts.middleware.SessionIdleMiddleware",
     "apps.accounts.middleware.MFAEnforcementMiddleware",
+    "apps.directory.middleware.DirectoryRecheckMiddleware",
     "apps.core.middleware.CurrentUserMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "apps.security.middleware.PasswordExpiryMiddleware",
@@ -198,7 +200,7 @@ CELERY_BEAT_SCHEDULE = {
     "jadep-at-60-sweep": {"task": "apps.members.tasks.jadep_sweep", "schedule": timedelta(hours=24)},
     "expire-temporary-roles": {"task": "apps.accounts.tasks.expire_temporary_roles", "schedule": timedelta(minutes=15)},
     "retention-sweep": {"task": "apps.privacy.tasks.retention_sweep", "schedule": timedelta(hours=24)},
-    "directory-sync": {"task": "apps.directory.tasks.sync_directory_users", "schedule": timedelta(hours=24)},
+    "directory-sync": {"task": "apps.directory.tasks.sync_directory_users", "schedule": timedelta(hours=1)},
     "practitioner-recheck": {"task": "apps.doctors.tasks.recheck_registers", "schedule": timedelta(hours=24)},
 }
 
@@ -276,6 +278,7 @@ CONTENT_SECURITY_POLICY = {
 # Field-level encryption for TRN payloads, medical conditions, signatures (DM10001, CS10002).
 # Separate key in production; derived from SECRET_KEY when unset (development only).
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY")
+FIELD_ENCRYPTION_LEGACY_FALLBACK = os.environ.get("FIELD_ENCRYPTION_LEGACY_FALLBACK", "1") == "1"
 
 # ----------------------------------------------------------------------------
 # Static files
@@ -296,7 +299,13 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 # ----------------------------------------------------------------------------
 # REST API (IN10001, MU10002)
 # ----------------------------------------------------------------------------
+# Number of proxies in front of the app that append to X-Forwarded-For (Railway edge / NHF load balancer = 1).
+TRUSTED_PROXY_COUNT = int(os.environ.get("TRUSTED_PROXY_COUNT", "0"))
+MAX_REQUEST_BYTES = 25 * 1024 * 1024  # largest upload is a 20 MB register extract
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000
+
 REST_FRAMEWORK = {
+    "NUM_PROXIES": TRUSTED_PROXY_COUNT,
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -311,6 +320,7 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Member, application-tracking and online-intake API for the NHF Member Registration System.",
     "VERSION": VERSION,
     "SERVE_INCLUDE_SCHEMA": False,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
 }
 
 # ----------------------------------------------------------------------------

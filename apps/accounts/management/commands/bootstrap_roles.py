@@ -15,7 +15,9 @@ ADMIN_PERMS = {
         ("doctors", "nurse"),
         ("doctors", "councilregisterentry"),
     ],
-    "ict_admin": [("accounts", "user"), ("accounts", "temporaryrole"), ("auth", "group"), ("directory", "groupmapping")],
+    # No auth.group (that would let an administrator give permissions to roles) and group mappings view-only:
+    # mapping a directory group to a role grants that role, so only a superuser changes mappings.
+    "ict_admin": [("accounts", "user"), ("core", "parameter"), ("view", "accounts.temporaryrole"), ("view", "directory.groupmapping")],
     "dpo": [("privacy", None), ("core", "parameter")],
     "auditor": [("core", "auditevent"), ("core", "integrationrun"), ("core", "notification")],
 }
@@ -27,11 +29,17 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         for code in ROLES:
             group, _ = Group.objects.get_or_create(name=code)
+            wanted = []
             for app_label, model in ADMIN_PERMS.get(code, []):
-                perms = Permission.objects.filter(content_type__app_label=app_label)
-                if model:
-                    perms = perms.filter(content_type__model=model)
+                if app_label == "view":
+                    label, name = model.split(".")
+                    perms = Permission.objects.filter(content_type__app_label=label, content_type__model=name, codename__startswith="view_")
+                else:
+                    perms = Permission.objects.filter(content_type__app_label=app_label)
+                    if model:
+                        perms = perms.filter(content_type__model=model)
                 if code == "auditor":
                     perms = perms.filter(codename__startswith="view_")
-                group.permissions.add(*perms)
+                wanted.extend(perms)
+            group.permissions.set(wanted)  # set, not add: permissions removed in a release are taken away on deploy
         self.stdout.write(f"roles: {len(ROLES)} groups present")

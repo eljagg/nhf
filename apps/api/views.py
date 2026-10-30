@@ -51,7 +51,10 @@ class MemberSerializer(serializers.ModelSerializer):
 
 @extend_schema(
     summary="Receive a doctor-portal submission (OR10001)",
-    description="Body signed with HMAC-SHA256 in X-Portal-Signature: sha256=<hex>.",
+    description=(
+        "Headers: X-Portal-Timestamp (Unix seconds, within 5 minutes), X-Portal-Nonce (16-100 random characters, never reused), "
+        "X-Portal-Signature: sha256=<hex of HMAC-SHA256 over '<timestamp>.<nonce>.<raw body>' with the shared secret>."
+    ),
     request=None,
     responses={201: TrackingSerializer},
 )
@@ -61,8 +64,14 @@ class MemberSerializer(serializers.ModelSerializer):
 @throttle_classes([PortalThrottle])
 def portal_intake(request):
     """Doctor-portal push endpoint."""
-    if not intake.verify_signature(request.body, request.headers.get("X-Portal-Signature", "")):
-        return Response({"detail": "invalid signature"}, status=401)
+    problem = intake.verify_signature(
+        request.body,
+        request.headers.get("X-Portal-Signature", ""),
+        request.headers.get("X-Portal-Timestamp", ""),
+        request.headers.get("X-Portal-Nonce", ""),
+    )
+    if problem:
+        return Response({"detail": problem}, status=401)
     try:
         payload = json.loads(request.body or b"{}")
         app = intake.receive_portal_submission(payload)

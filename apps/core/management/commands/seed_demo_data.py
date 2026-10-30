@@ -132,6 +132,11 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         if not opts["force"]:
             raise CommandError("Refusing to seed without --force (synthetic data; never on production).")
+        from django.conf import settings
+
+        if not settings.DEMO_MODE:
+            self.stdout.write(self.style.WARNING("DEMO_MODE is off: demo data (known passwords) is never seeded outside demo mode. Skipped."))
+            return
         if opts["if_missing"] and TajIdentity.objects.exists():
             if not CouncilRegisterEntry.objects.exists():  # upgrade from v0.2.1: add practitioners without a full reseed
                 with transaction.atomic():

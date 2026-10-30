@@ -147,10 +147,17 @@ def test_unknown_doctor_confirmed_makes_application_ready(agent, manager, taj, r
     assert services.refresh_status(app).status == "ready"
 
 
-def _signed(client, payload, secret="test-portal-secret"):
+def _signed(client, payload, secret="test-portal-secret", ts=None, nonce=None):
+    import time
+    import uuid
+
     body = json.dumps(payload).encode()
-    sig = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    return client.post("/api/intake/portal/", data=body, content_type="application/json", HTTP_X_PORTAL_SIGNATURE=sig)
+    ts = str(int(time.time())) if ts is None else ts
+    nonce = nonce or uuid.uuid4().hex
+    sig = "sha256=" + hmac.new(secret.encode(), f"{ts}.{nonce}.".encode() + body, hashlib.sha256).hexdigest()
+    return client.post(
+        "/api/intake/portal/", data=body, content_type="application/json", HTTP_X_PORTAL_SIGNATURE=sig, HTTP_X_PORTAL_TIMESTAMP=ts, HTTP_X_PORTAL_NONCE=nonce
+    )
 
 
 def test_portal_intake_requires_signature_and_creates_online_application(client, agent, taj, doctor, django_capture_on_commit_callbacks):
@@ -171,6 +178,10 @@ def test_portal_intake_requires_signature_and_creates_online_application(client,
     assert app.channel == "online" and app.kind == "new" and app.identity_confirmed and app.status == "ready"
     assert app.interactions.filter(event="portal.received").exists()
     assert _signed(client, payload).json()["tracking_number"] == app.tracking_number  # idempotent re-delivery
+    assert _signed(client, payload, nonce="fixed-nonce-0123456789").status_code == 201
+    assert _signed(client, payload, nonce="fixed-nonce-0123456789").json()["detail"] == "nonce already used"  # replay refused
+    assert _signed(client, payload, ts="1000000000").status_code == 401  # stale timestamp
+    assert _signed(client, ["not", "an", "object"]).status_code == 400
 
 
 def test_portal_new_form_for_existing_member_becomes_change(client, agent, taj, doctor, run_commits):

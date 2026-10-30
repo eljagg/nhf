@@ -29,5 +29,7 @@ urlpatterns = [
     path("staff/<int:user_id>/image/<str:kind>/", staff.staff_image, name="staff-image"),
     path("staff/<int:user_id>/suspend/", staff.suspend, name="staff-suspend"),
     path("staff/<int:user_id>/reinstate/", staff.reinstate, name="staff-reinstate"),
+    path("staff/<int:user_id>/role-request/", staff.request_role_change, name="role-request"),
+    path("role-requests/<int:pk>/decide/", staff.decide_role_change, name="role-decide"),
     path("temporary-roles/<int:pk>/revoke/", views.revoke_temporary_role, name="revoke-temporary-role"),
 ]

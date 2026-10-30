@@ -69,3 +69,11 @@ dashboards and saved reports (step 8) in A3.
 23. **Register import**: as `mgr.morgan`, go to *Council register import*, choose the Medical Council and a CSV with columns `registration_number,first_name,last_name,specialty,status,valid_until` → *Preview* → *Import*.
 24. **Staff profile and suspension**: as `ictadmin.james`, go to *Staff* → `cc.walker` → upload a photo and an ID picture, set the ID type and number → *Suspend account* with a reason. Anywhere `cc.walker` is signed in, the next click returns to sign-in and the account is reported as suspended; *Reinstate* restores it. As `auditor.shaw` the ID number shows only its last four characters and no ID picture.
 
+## v0.2.3 additions
+
+25. **AD leaver**: with the demo directory on, sign in as `ad.richards`. As `ictadmin.james`, open *Back office → Group mappings* and delete `NHF-MRS-CustomerCare`. Within 15 minutes her next click signs her out with "Your network account is no longer enabled". Put the mapping back to restore access.
+26. **Restriction**: as `dpo.grant`, open a request from a member → *Restrict processing*. The member record shows a red banner and their applications cannot be approved. *Lift restriction* clears it.
+27. **Breach notices**: *Breach register* → a breach → *Draft notice to the Commissioner* / *Draft notice to people affected*.
+28. **Impact assessment**: *Impact assessments* → *Start the 2026 assessment* → edit → *Approve as DPO* → *Mark as submitted*.
+29. **Two-step can't be skipped**: sign in as a user who already has an authenticator and go straight to `/accounts/mfa/setup/`: you are sent to the code check.
+

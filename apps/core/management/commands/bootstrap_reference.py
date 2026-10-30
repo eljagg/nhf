@@ -137,6 +137,55 @@ PROCESSING = [
 ]
 
 
+PROCESSING_V022 = [
+    (
+        "Nurse validation",
+        "Confirm nurses and midwives with the Nursing Council of Jamaica and keep the Fund's nurses register.",
+        "Statutory function",
+        "Nurses and midwives",
+        "Name, NCJ registration number, category, workplace and address, contact details, photo, register status",
+        False,
+        "Nursing Council of Jamaica",
+        "While the nurse remains on the nurses register",
+    ),
+    (
+        "Staff identity records",
+        "Identify staff who handle member data: photo, government ID and ID number held for vetting and access control.",
+        "Employment obligations; security obligations under the Act",
+        "Staff users",
+        "Photo, ID type, ID number (encrypted), ID expiry, ID picture (encrypted); suspension records",
+        False,
+        "Fund ICT and Human Resources",
+        "While employed; erased automatically a set period after the account is disabled (parameter staff-id-retention-days)",
+    ),
+    (
+        "Directory sign-in",
+        "Sign staff in with their NHF network account and keep roles in step with Active Directory / Entra ID groups.",
+        "Legitimate interest and security obligations under the Act",
+        "Staff users",
+        "Username, name, e-mail, directory object id, group memberships",
+        False,
+        "None outside the Fund (read-only queries to the Fund's own directory)",
+        "While the account exists",
+    ),
+]
+OLD_SECURITY_MEASURES = "Role-based access, MFA for privileged roles, field-level encryption of sensitive data, append-only audit, TLS"
+SECURITY_MEASURES = (
+    "Role-based access with need-to-know masking; two-step sign-in for all staff; field-level encryption of sensitive data and images; "
+    "append-only audit and access log; TLS; security alerts; retention sweep"
+)
+OLD_DOCTOR_CATEGORIES = "Name, MCJ registration number, practice and contact details"
+# Parameter values that are still at a previous release's default are moved to the new default; edited values are left alone.
+OLD_PARAMETER_DEFAULTS = {
+    "privacy-notice-version": ["2026-10"],
+    "privacy-notice-text": [
+        "The National Health Fund collects your personal details and the medical conditions certified by your doctor to register you for "
+        "NHF benefits, produce your NHF Card and process your benefit claims. Your information is shared only with the Tax Administration "
+        "(TRN validation), the Medical Council (doctor confirmation), the claims adjudicator and card production, and is kept in line with "
+        "the Fund's retention policy. You may ask for a copy of your information or for it to be corrected."
+    ],
+}
+
 # Suggested AD group names; NHF renames or remaps them in the back office.
 GROUP_MAPPINGS = [
     ("NHF-MRS-CustomerCare", "customer_care", None),
@@ -176,8 +225,11 @@ class Command(BaseCommand):
         for code, label, system in REASONS:
             RejectionReason.objects.get_or_create(code=code, defaults={"label": label, "is_system": system})
         for key, (value, desc) in Parameter.DEFAULTS.items():
-            Parameter.objects.get_or_create(key=key, defaults={"value": value, "description": desc})
-        for name, purpose, basis, subjects, cats, sensitive, recipients, retention in PROCESSING:
+            param, created = Parameter.objects.get_or_create(key=key, defaults={"value": value, "description": desc})
+            if not created and param.value in OLD_PARAMETER_DEFAULTS.get(key, []):
+                param.value, param.description = value, desc
+                param.save()
+        for name, purpose, basis, subjects, cats, sensitive, recipients, retention in PROCESSING + PROCESSING_V022:
             ProcessingActivity.objects.get_or_create(
                 name=name,
                 defaults={
@@ -188,9 +240,13 @@ class Command(BaseCommand):
                     "sensitive": sensitive,
                     "recipients": recipients,
                     "retention": retention,
-                    "security_measures": "Role-based access, MFA for privileged roles, field-level encryption of sensitive data, append-only audit, TLS",
+                    "security_measures": SECURITY_MEASURES,
                 },
             )
+        ProcessingActivity.objects.filter(security_measures=OLD_SECURITY_MEASURES).update(security_measures=SECURITY_MEASURES)
+        ProcessingActivity.objects.filter(name="Doctor validation", data_categories=OLD_DOCTOR_CATEGORIES).update(
+            data_categories="Name, MCJ registration number, specialty, practice name and address, contact details, photo, register status"
+        )
         if not GroupMapping.objects.exists():
             for group, role, centre in GROUP_MAPPINGS:
                 GroupMapping.objects.create(source="ad", group=group, role=role, centre=Centre.objects.filter(code=centre).first() if centre else None)

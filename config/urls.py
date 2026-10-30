@@ -8,6 +8,17 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 admin.site.site_header = f"{settings.PRODUCT_NAME} — back office"
 admin.site.site_title = "Member Registration admin"
 
+
+def _backoffice_login(request, extra_context=None):
+    """One sign-in page for everything: the back office uses the staff sign-in (lockout, suspension, two-step)."""
+    from django.shortcuts import redirect
+    from django.utils.http import urlencode
+
+    return redirect(f"/accounts/login/?{urlencode({'next': request.GET.get('next', '/backoffice/')})}")
+
+
+admin.site.login = _backoffice_login
+
 urlpatterns = [
     path("", include("apps.core.urls")),
     path("accounts/oidc/", include("apps.directory.urls_oidc")),

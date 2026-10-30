@@ -2,6 +2,8 @@
 
 import contextvars
 
+from apps.core.net import client_ip
+
 _request = contextvars.ContextVar("request", default=None)
 
 
@@ -34,6 +36,6 @@ def record(action, obj=None, summary="", actor=None, **data):
         object_id=str(obj.pk) if obj is not None else "",
         summary=summary[:500],
         data=data,
-        ip_address=(req.META.get("REMOTE_ADDR") if req else None),
+        ip_address=client_ip(req),
         request_id=getattr(req, "request_id", "") if req else "",
     )

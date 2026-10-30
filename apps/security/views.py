@@ -14,7 +14,7 @@ from django.views.decorators.http import require_POST
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from apps.accounts.roles import has_role, role_names, role_required, users_with_role
-from apps.core import audit
+from apps.core import audit, csvsafe
 from apps.core.models import AuditEvent, Parameter
 
 from .models import AccessLog, SecurityAlert
@@ -163,13 +163,13 @@ def activity_csv(request):
     end = _parse_date(request.GET.get("to"), today)
     events, access = _activity(target, start, end)
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = f'attachment; filename="activity-{target.username}-{start}-{end}.csv"'
+    response["Content-Disposition"] = f'attachment; filename="{csvsafe.filename(f"activity-{target.username}-{start}-{end}")}.csv"'
     writer = csv.writer(response)
     writer.writerow(["time", "type", "action_or_page", "record", "status", "ip_address"])
     rows = [(e.at, "event", e.action, e.summary, "", e.ip_address or "") for e in events.iterator()]
     rows += [(a.at, "page", f"{a.method} {a.path}", f"{a.object_type} {a.object_ref}".strip(), a.status, a.ip_address or "") for a in access.iterator()]
     for row in sorted(rows, key=lambda r: r[0]):
-        writer.writerow([timezone.localtime(row[0]).strftime("%Y-%m-%d %H:%M:%S"), *row[1:]])
+        writer.writerow(csvsafe.row([timezone.localtime(row[0]).strftime("%Y-%m-%d %H:%M:%S"), *row[1:]]))
     audit.record("security.activity_exported", target, f"Activity of {target.username} exported for {start}–{end}")
     return response
 

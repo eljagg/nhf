@@ -41,6 +41,10 @@ class Member(models.Model):
     nis_number = models.CharField("NIS number", max_length=12, blank=True, db_index=True, help_text="National Insurance Scheme number (optional).")
     consent_at = models.DateTimeField(null=True, blank=True, help_text="When the member consented to processing (Data Protection Act 2020).")
     consent_version = models.CharField(max_length=20, blank=True)
+    processing_restricted_at = models.DateTimeField(
+        null=True, blank=True, help_text="Set by the DPO when the member objects to / asks to restrict processing (Data Protection Act 2020)."
+    )
+    processing_restriction_reason = models.CharField(max_length=300, blank=True)
     srn_annotation = models.CharField(max_length=120, blank=True, help_text="Shown with the number when it is an SRN (SR10005).")
     first_name = models.CharField(max_length=60)
     middle_name = models.CharField(max_length=60, blank=True)

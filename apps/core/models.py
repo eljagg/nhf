@@ -39,6 +39,29 @@ class Centre(models.Model):
         return self.name
 
 
+# Security floors and ceilings: a back-office edit can never switch a control off. (min, max)
+PARAMETER_LIMITS = {
+    "access-log-retention-days": (180, 3650),
+    "staff-id-retention-days": (90, 3650),
+    "retention-rejected-days": (365, 3650),
+    "directory-recheck-minutes": (5, 60),
+    "register-recheck-days": (1, 90),
+    "password-max-age-days": (0, 365),
+    "password-history-count": (3, 24),
+    "alert-failed-logins": (3, 20),
+    "alert-failed-logins-address": (5, 100),
+    "alert-failed-mfa": (3, 20),
+    "alert-bulk-view-per-hour": (10, 500),
+    "alert-failed-trn-per-hour": (3, 100),
+    "limit-trn-screen-per-hour": (5, 200),
+    "limit-register-check-per-hour": (5, 300),
+    "dsr-days": (1, 30),
+    "breach-report-hours": (1, 72),
+}
+# Only application administrators and the DPO may change these in the back office.
+SECURITY_PARAMETERS = set(PARAMETER_LIMITS) - {"retention-rejected-days", "register-recheck-days", "dsr-days"}
+
+
 class Parameter(models.Model):
     """Parameter-driven configuration editable by the back office (MU10001, US10002)."""
 
@@ -57,6 +80,10 @@ class Parameter(models.Model):
         "guardian-required-under-age": (18, "Applicants younger than this must have a guardian (BR10004)."),
         "jadep-age": (60, "Age at which the JADEP programme is assigned automatically (BR10005)."),
         "srn-prefix": ("9", "First digit of every Special Registration Number (SR10002)."),
+        "directory-recheck-minutes": (
+            15,
+            "Signed-in Active Directory users are re-checked against AD this often; disabled accounts are signed out (0 turns it off).",
+        ),
         "register-recheck-days": (30, "Confirmed doctors and nurses are re-checked against their council register this often (nightly batch)."),
         "work-lock-seconds": (90, "A record is shown as being worked on while the agent's heartbeat is newer than this (OR10010)."),
         "counter-target-minutes": (15, "Target time from entry to dispatch at the counter (PF10001)."),
@@ -64,12 +91,16 @@ class Parameter(models.Model):
             r"^([A-Z][0-9]{6}|[0-9]{9})$",
             "Accepted NIS number format (regular expression). Default: one letter + six digits, or nine digits.",
         ),
-        "privacy-notice-version": ("2026-10", "Version of the privacy notice applicants consent to (Data Protection Act 2020)."),
+        "privacy-notice-version": ("2026-11", "Version of the privacy notice applicants consent to (Data Protection Act 2020)."),
         "privacy-notice-text": (
             "The National Health Fund collects your personal details and the medical conditions certified by your doctor to register you for "
-            "NHF benefits, produce your NHF Card and process your benefit claims. Your information is shared only with the Tax Administration "
-            "(TRN validation), the Medical Council (doctor confirmation), the claims adjudicator and card production, and is kept in line with "
-            "the Fund's retention policy. You may ask for a copy of your information or for it to be corrected.",
+            "NHF benefits, produce your NHF Card and process your benefit claims. Your health information is sensitive personal data and is "
+            "processed with your written consent. It is shared only with Tax Administration Jamaica (TRN validation), the Medical Council and "
+            "Nursing Council (confirming the health professional who certified your form), the claims adjudicator and card production, and is "
+            "kept in line with the Fund's retention schedule. Eligibility checks are assisted by the system, but every decision is made by NHF "
+            "staff. Under the Data Protection Act 2020 you may ask for a copy of your information, ask for it to be corrected, object to or ask "
+            "us to restrict its use, and ask for any decision to be reviewed by a person. Contact the Fund's Data Protection Officer at any NHF "
+            "centre. You may also complain to the Office of the Information Commissioner.",
             "Privacy notice shown on the application form.",
         ),
         "access-log-retention-days": (365, "Days to keep the page-by-page access log."),
@@ -79,18 +110,41 @@ class Parameter(models.Model):
         "alert-failed-logins": (5, "Raise a security alert after this many failed sign-ins for one username within 15 minutes."),
         "alert-failed-logins-address": (20, "Raise a security alert after this many failed sign-ins from one address (any usernames) within 15 minutes."),
         "alert-failed-mfa": (5, "Raise a security alert after this many wrong two-step codes for one user within 15 minutes."),
+        "limit-trn-screen-per-hour": (
+            40,
+            "Most TRN screenings (without an application) one user may run in an hour; beyond this they are refused and an alert raised.",
+        ),
+        "limit-register-check-per-hour": (60, "Most council register checks one user may run by hand in an hour."),
         "alert-failed-trn-per-hour": (10, "Raise a security alert when one user's invalid or mismatched TRN checks exceed this in an hour."),
         "dsr-days": (30, "Days allowed to answer a data-subject request."),
+        "dpo-name": ("", "Data Protection Officer's name, used in breach notices and the privacy notice."),
+        "dpo-email": ("", "Data Protection Officer's e-mail address."),
+        "dpo-phone": ("", "Data Protection Officer's telephone number."),
+        "dpa-registration-number": ("", "The Fund's registration number with the Office of the Information Commissioner."),
+        "dpa-registration-expiry": ("", "Date the registration must be renewed (YYYY-MM-DD); the privacy dashboard warns 60 days before."),
+        "staff-id-retention-days": (365, "ID number, ID picture and photo of a disabled staff account are erased this many days after it was disabled."),
         "breach-report-hours": (72, "Hours to report a personal-data breach to the Information Commissioner."),
         "retention-rejected-days": (730, "Rejected/terminated applications are anonymised after this many days."),
     }
 
+    @staticmethod
+    def clamp(key, value):
+        """Hold a numeric security parameter inside its allowed range."""
+        if key not in PARAMETER_LIMITS:
+            return value
+        low, high = PARAMETER_LIMITS[key]
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            return Parameter.DEFAULTS[key][0]
+        return max(low, min(high, number))
+
     @classmethod
     def get(cls, key, default=None):
-        """Return the parameter value, falling back to the documented default."""
+        """Return the parameter value, falling back to the documented default; security limits are always enforced."""
         row = cls.objects.filter(key=key).only("value").first()
         if row is not None:
-            return row.value
+            return cls.clamp(key, row.value)
         if key in cls.DEFAULTS:
             return cls.DEFAULTS[key][0]
         return default

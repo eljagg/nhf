@@ -23,6 +23,10 @@ class SessionIdleMiddleware:
     def __call__(self, request):
         if request.user.is_authenticated:
             now = int(time.time())
+            started = request.session.setdefault("login_at", now)
+            if now - started > settings.SESSION_COOKIE_AGE:  # absolute cap: activity does not extend it
+                logout(request)
+                return redirect(f"{reverse('accounts:login')}?idle=1")
             last = request.session.get("last_seen", now)
             if now - last > settings.SESSION_IDLE_MINUTES * 60:
                 logout(request)
@@ -55,7 +59,11 @@ class MFAEnforcementMiddleware:
 
     def __call__(self, request):
         user = request.user
-        if user.is_authenticated and getattr(user, "is_suspended", False) and not request.path.startswith(("/static/", "/healthz")):
+        if (
+            user.is_authenticated
+            and (getattr(user, "is_suspended", False) or getattr(user, "is_temporarily_locked", False))
+            and not request.path.startswith(("/static/", "/healthz"))
+        ):
             from django.contrib.auth import logout
 
             logout(request)  # a suspension takes effect on the next request, wherever the person is signed in

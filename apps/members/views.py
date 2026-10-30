@@ -8,6 +8,7 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from apps.accounts.roles import MEMBER_ROLES, PROCESS_ROLES, can_view_conditions, has_role, role_required
@@ -355,7 +356,8 @@ def assign(request, tracking):
     if user:
         intake.assign(app, to_user=user, by_user=request.user)
         messages.success(request, f"Assigned to {user.display_name()}.")
-    return redirect(request.POST.get("next") or "intake:queue")
+    nxt = request.POST.get("next", "")
+    return redirect(nxt if url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()) else "intake:queue")
 
 
 @role_required(*MEMBER_ROLES)

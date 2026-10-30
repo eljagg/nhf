@@ -81,6 +81,7 @@ class SecurityAlert(models.Model):
         ("mfa_reset", "Two-step sign-in reset by an administrator"),
         ("directory", "Directory account change"),
         ("sessions_revoked", "Sessions ended by an administrator"),
+        ("rate_limit", "Lookup limit exceeded"),
     ]
     SEVERITIES = [("low", "Low"), ("medium", "Medium"), ("high", "High")]
     at = models.DateTimeField(auto_now_add=True, db_index=True)

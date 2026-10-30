@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-2 mb-4"><h1>Impact assessment {{ d.year }}</h1>{% if d.status == "submitted" %}<span class="b-green">{{ d.get_status_display }} {{ d.submitted_at|date:"j M Y" }}</span>{% elif d.status == "approved" %}<span class="b-brand">Approved by {{ d.approved_by.display_name }} {{ d.approved_at|date:"j M Y" }}</span>{% else %}<span class="b-amber">Draft</span>{% endif %}</div>
+<form method="post" class="card card-b space-y-3 max-w-5xl">{% csrf_token %}
+  {% for f in form %}<div><label class="lbl" for="{{ f.id_for_label }}">{{ f.label|capfirst }}</label>{{ f }}{% if f.help_text %}<p class="text-xs text-slate-500">{{ f.help_text }}</p>{% endif %}</div>{% endfor %}
+  {% if can_edit %}<div class="flex flex-wrap gap-2"><button class="btn-secondary" name="action" value="save">Save draft</button>
+    {% if is_dpo and d.status == "draft" %}<button class="btn-primary" name="action" value="approve">Approve as DPO</button>{% endif %}
+    {% if d.status == "approved" %}<button class="btn-primary" name="action" value="submitted" data-confirm="Record that this assessment was submitted to the Information Commissioner?">Mark as submitted to the Commissioner</button>{% endif %}</div>
+  <p class="text-xs text-slate-500">Editing an approved assessment returns it to draft. A submitted assessment is locked.</p>{% endif %}
+</form>
+{% endblock %}

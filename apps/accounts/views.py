@@ -65,6 +65,7 @@ def login_view(request):
             "form": form,
             "idle": request.GET.get("idle"),
             "suspended": request.GET.get("suspended"),
+            "revoked": request.GET.get("revoked"),
             "directory_error": getattr(request, "directory_error", ""),
             "ldap_enabled": settings.LDAP["ENABLED"],
             "oidc_enabled": settings.OIDC["ENABLED"],
@@ -91,7 +92,14 @@ def _qr_svg(uri):
 
 @login_required
 def mfa_setup(request):
-    """Enrol a TOTP authenticator (Microsoft/Google Authenticator) (UM10004)."""
+    """Enrol a TOTP authenticator (Microsoft/Google Authenticator) (UM10004).
+
+    Someone who already has an authenticator must pass the code check first: otherwise a stolen password would be
+    enough to enrol the attacker's own phone. Replacing a phone is done from a verified session (or, if the phone
+    is lost, by an application administrator's reset).
+    """
+    if TOTPDevice.objects.filter(user=request.user, confirmed=True).exists() and not request.user.is_verified():
+        return redirect(f"{reverse('accounts:mfa-verify')}?next={reverse('accounts:mfa-setup')}")
     device = TOTPDevice.objects.filter(user=request.user, confirmed=False).first() or TOTPDevice.objects.create(
         user=request.user, name="Authenticator", confirmed=False
     )
@@ -100,7 +108,10 @@ def mfa_setup(request):
         if device.verify_token(request.POST.get("token", "").strip()):
             device.confirmed = True
             device.save()
-            TOTPDevice.objects.filter(user=request.user, confirmed=False).delete()
+            replaced = TOTPDevice.objects.filter(user=request.user).exclude(pk=device.pk).count()
+            TOTPDevice.objects.filter(user=request.user).exclude(pk=device.pk).delete()  # one authenticator per person
+            if replaced:
+                audit.record("auth.mfa_replaced", request.user, "Authenticator replaced from a verified session")
             otp_login(request, device)
             audit.record("auth.mfa_enrolled", request.user, "TOTP device enrolled")
             request.session["new_backup_codes"] = issue_backup_codes(request.user)
@@ -186,23 +197,43 @@ def regenerate_backup_codes(request):
     return redirect("accounts:mfa-backup-codes")
 
 
+# Separation of duties: who may hand out which role for a while. Nobody grants to themselves; privileged roles
+# (manager, application/database administrator, DPO) are never granted temporarily — they go through the
+# directory group or a permanent change recorded in the back office.
+GRANTABLE = {
+    "manager": {"customer_care", "supervisor", "back_office", "print_operator", "srn_approver", "mcj_confirmer", "auditor"},
+    "ict_admin": {"back_office"},
+}
+
+
+def grantable_roles(user):
+    """Roles this person may grant temporarily."""
+    allowed = set()
+    for role in role_names(user):
+        allowed |= GRANTABLE.get(role, set())
+    return allowed
+
+
 class TemporaryRoleForm(forms.Form):
     """Grant a role for a set number of hours."""
 
     user = forms.ModelChoiceField(queryset=None)
-    role = forms.ChoiceField(choices=[(k, v[0]) for k, v in ROLES.items()])
+    role = forms.ChoiceField(choices=())
     hours = forms.IntegerField(min_value=1, max_value=24 * 30, initial=8)
     reason = forms.CharField(max_length=200)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, grantor=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["user"].queryset = get_user_model().objects.filter(is_active=True).order_by("username")
+        qs = get_user_model().objects.filter(is_active=True, is_superuser=False).order_by("username")
+        self.fields["user"].queryset = qs.exclude(pk=grantor.pk) if grantor else qs
+        allowed = grantable_roles(grantor) if grantor else set()
+        self.fields["role"].choices = [(k, v[0]) for k, v in ROLES.items() if k in allowed]
 
 
 @role_required("manager", "ict_admin")
 def temporary_roles(request):
     """Grant and revoke temporary roles (UM10007)."""
-    form = TemporaryRoleForm(request.POST or None)
+    form = TemporaryRoleForm(request.POST or None, grantor=request.user)
     if request.method == "POST" and form.is_valid():
         group = Group.objects.get(name=form.cleaned_data["role"])
         grant = TemporaryRole.objects.create(

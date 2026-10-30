@@ -101,6 +101,7 @@ def site(request):
                 _item("Requests from members", "privacy:dsr-list", request, ("dpo", "manager", "auditor")),
                 _item("Breach register", "privacy:breach-list", request, ("dpo", "manager", "auditor"), breach_open),
                 _item("Processing register", "privacy:register", request, ("dpo", "manager", "auditor")),
+                _item("Impact assessments", "privacy:dpia-list", request, ("dpo", "manager", "auditor")),
             ],
         ),
         (

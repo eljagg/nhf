@@ -41,7 +41,11 @@ class ActiveDirectoryBackend(ModelBackend):
             if request is not None:
                 request.directory_error = str(exc)
             return None
-        if user.is_suspended and request is not None:
-            request.directory_error = "This account is suspended. Contact your manager or the application administrator."
+        if (user.is_suspended or user.is_temporarily_locked) and request is not None:
+            request.directory_error = (
+                "This account is suspended. Contact your manager or the application administrator."
+                if user.is_suspended
+                else "This account is temporarily locked. Contact the application administrator."
+            )
             return None
         return user if self.user_can_authenticate(user) else None

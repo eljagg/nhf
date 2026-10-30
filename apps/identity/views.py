@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.accounts.roles import PROCESS_ROLES, has_role, role_required
+from apps.core import ratelimit
 from apps.members.models import Member
 
 from . import services
@@ -22,6 +23,8 @@ def screen(request):
         elif number.startswith(str(services.Parameter.get("srn-prefix"))):
             issue = SrnIssue.objects.filter(srn=number).select_related("decided_by").first()
             result = {"kind": "srn", "issue": issue, "member": Member.objects.filter(trn=number).first()}
+        elif not ratelimit.enforce(request, "trn-screen", "limit-trn-screen-per-hour", "TRN screenings"):
+            messages.error(request, "You have reached the hourly limit for TRN screening. Your supervisor has been told; try again later.")
         else:
             validation = services.start_validation(number, user=request.user, purpose="screen")
             return redirect("identity:screen-result", pk=validation.pk)

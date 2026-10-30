@@ -95,7 +95,7 @@ def test_invalid_trn_sms_to_applicant(agent, taj, run_commits):
     with run_commits():
         services.notify_invalid_trn(app, user=agent)
     sms = Notification.objects.get(template="trn-invalid")
-    assert sms.channel == "sms" and "100999999" in sms.body and sms.status == "previewed"
+    assert sms.channel == "sms" and "ending 999" in sms.body and "100999999" not in sms.body and sms.status == "previewed"
 
 
 def test_service_outage_keeps_application_open_and_opens_breaker(agent, taj, run_commits):
