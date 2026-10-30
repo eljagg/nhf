@@ -1,10 +1,11 @@
 """Root URL configuration."""
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-admin.site.site_header = "FCC Registry Platform — back office"
+admin.site.site_header = f"{settings.PRODUCT_NAME} — back office"
 admin.site.site_title = "Member Registration admin"
 
 urlpatterns = [

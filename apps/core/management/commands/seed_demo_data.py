@@ -112,7 +112,7 @@ class Command(BaseCommand):
             cur.execute(
                 "TRUNCATE interactions_interactionnote, interactions_interaction, cards_card, members_applicationcondition, members_application, "
                 "members_membercondition, members_enrolment, members_guardian, members_member, identity_trnvalidation, identity_srnissue, identity_tajidentity, "
-                "doctors_doctor, core_notification, core_integrationrun RESTART IDENTITY CASCADE"
+                "doctors_doctor, core_notification, core_integrationrun, accounts_temporaryrole RESTART IDENTITY CASCADE"
             )
             cur.execute("ALTER SEQUENCE members_member_number_seq RESTART WITH 2000000001")
             cur.execute("ALTER SEQUENCE members_tracking_seq RESTART WITH 1")
@@ -190,8 +190,8 @@ class Command(BaseCommand):
             rows.append(
                 TajIdentity(
                     trn=trn,
-                    first_name=rng.choice(FIRST_M if gender == "M" else FIRST_F),
-                    middle_name=rng.choice(MIDDLE) if rng.random() < 0.5 else "",
+                    first_name=(first := rng.choice(FIRST_M if gender == "M" else FIRST_F)),
+                    middle_name=rng.choice([m for m in MIDDLE if m != first]) if rng.random() < 0.5 else "",
                     last_name=rng.choice(LAST),
                     dob=dob,
                     gender=gender,

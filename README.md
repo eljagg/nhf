@@ -1,4 +1,4 @@
-# FCC Registry Platform — Member Registration (NHF)
+# Registry Platform — Member Registration (NHF)
 
 Member Registration System for the National Health Fund — RFB No. NHF/MRS/2026-09 (GoJEP 1021/1473).
 It replaces NHF's Member Registration application and folds the TRN Validator, Card Verification and NHF Dispatch
@@ -62,6 +62,9 @@ One service from this repository plus a PostgreSQL database. Variables:
 | `DEMO_DATA` | `1` (seed once) — `reseed` rebuilds the demo data on the next deploy |
 | `DEMO_PASSWORD` | password for the demo users |
 | `PORTAL_SHARED_SECRET` | any long random string |
+| `CELERY_TASK_ALWAYS_EAGER` | `1` when Redis is attached but no worker service runs |
+| `PRODUCT_NAME` | name shown on screens (default `Registry Platform`) |
+| `BUILT_BY` | optional credit on the sign-in footer, e.g. `AiShiftCode` (blank shows nothing) |
 
 The entrypoint migrates, loads roles and reference data, seeds the demo set, then starts Gunicorn. Railway's public
 domain is trusted automatically. Health check: `/healthz`.

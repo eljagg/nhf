@@ -1,2 +1,3 @@
 {% extends "accounts/_shell.html" %}
-{% block box %}<h1>Account locked</h1><p class="text-sm mt-2">Too many failed sign-in attempts. Try again in a few minutes or contact the application administrator.</p><p class="mt-4"><a href="{% url 'accounts:login' %}">Back to sign in</a></p>{% endblock %}
+{% block title %}Account locked{% endblock %}
+{% block box %}<h1 class="text-white text-2xl">Account locked</h1><p class="text-sm text-white/80 mt-2">Too many failed sign-in attempts. Try again in a few minutes or contact the application administrator.</p><p class="mt-6"><a class="glass-btn w-full" href="{% url 'accounts:login' %}">Back to sign in</a></p>{% endblock %}

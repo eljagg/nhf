@@ -1,8 +1,17 @@
 # Changelog
 
+## v0.1.1 — 29 October 2026 — sign-in redesign
+
+- Sign-in, two-step setup, code entry and account-locked screens rebuilt: frosted-glass card over a slow-moving background, with black, gold and green bars reading "Jamaica, Land We Love" and a light shimmer that sweeps right to left and back. The shimmer is off for anyone who has turned off animations.
+- Username and password boxes: brighter 2px borders, gold focus ring.
+- Inside the app: frosted top bar, softer cards, small hover lift on the home counters; working forms unchanged.
+- Product name and builder credit are now settings (`PRODUCT_NAME`, default "Registry Platform"; `BUILT_BY`, empty by default) — no company name is hard-coded.
+- `.gitattributes` keeps LF line endings in the repository (no more CRLF warnings on Windows).
+- Demo reseed also clears temporary role grants; synthetic names no longer repeat the first name as the middle name.
+
 ## v0.1.0 — 29 October 2026 — Phase A sprints A0 and A1
 
-First release of the NHF Member Registration edition of the FCC Registry Platform, built from the TOR, the two
+First release of the NHF Member Registration System, built from the TOR, the two
 requirement workbooks and the Design and Build Plan v1.0.
 
 - Scaffold: Django 5.2 / PostgreSQL 16 / Celery / HTMX + Tailwind v4, Docker image, Railway config, CI (ruff, bandit, pip-audit, tests, deploy checks).

@@ -33,7 +33,7 @@
     <div class="px-4 py-3 text-[0.7rem] text-brand-200 border-t border-white/10">v{{ VERSION }}{% if DEMO_MODE %} · synthetic demo data{% endif %}</div>
   </aside>
   <div class="flex-1 min-w-0 flex flex-col">
-    <header class="bg-white border-b border-slate-200 px-6 py-2.5 flex items-center gap-4 print:hidden">
+    <header class="app-topbar sticky top-0 z-20 border-b border-slate-200/80 px-6 py-2.5 flex items-center gap-4 print:hidden">
       <form action="{% url 'members:search' %}" method="get" class="flex-1 max-w-xl" role="search">
         <label for="q-top" class="sr-only">Find a member or application</label>
         <input id="q-top" name="q" value="{{ request.GET.q }}" class="inp" placeholder="Find by TRN, member no., tracking no. or name  (press /)" autocomplete="off">

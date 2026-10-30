@@ -1,21 +1,29 @@
 {% extends "base_public.html" %}
 {% block public %}
-<div class="min-h-screen grid lg:grid-cols-[1fr_28rem]">
-  <section class="hidden lg:flex flex-col justify-between bg-brand-800 text-white p-12">
+<div class="landing-bg" aria-hidden="true"><span class="blob blob-a"></span><span class="blob blob-b"></span><span class="blob blob-c"></span></div>
+<div class="relative min-h-screen grid lg:grid-cols-[minmax(18rem,26rem)_1fr_minmax(22rem,30rem)] gap-8 px-6 py-8 lg:px-12 lg:py-10">
+  <section class="flex flex-col justify-between text-white">
     <div>
-      <div class="text-xs uppercase tracking-[0.25em] text-brand-200">{{ PRODUCT_NAME }}</div>
-      <div class="text-3xl font-bold mt-2">{{ EDITION_NAME }}</div>
+      <div class="text-xs uppercase tracking-[0.28em] text-brand-200">{{ PRODUCT_NAME }}</div>
+      <div class="text-3xl font-bold mt-2 leading-tight">{{ EDITION_NAME }}</div>
       <div class="text-brand-200 mt-1">{{ CLIENT_NAME }}</div>
     </div>
-    <ul class="space-y-3 text-brand-50/90 max-w-md">
-      <li class="flex gap-3"><span class="text-brand-200 font-mono">01</span> TRN validated at the counter, name and date of birth locked to the Tax Office record.</li>
-      <li class="flex gap-3"><span class="text-brand-200 font-mono">02</span> Eligibility rules applied as the form is keyed — guardian under 18, JADEP at 60.</li>
-      <li class="flex gap-3"><span class="text-brand-200 font-mono">03</span> Every step written to the member's interaction log and the audit trail.</li>
+    <ul class="hidden lg:block space-y-4 text-brand-50/90 max-w-sm my-10">
+      <li class="glass-chip"><span class="font-mono text-gold">01</span> TRN validated at the counter, name and date of birth locked to the Tax Office record.</li>
+      <li class="glass-chip"><span class="font-mono text-gold">02</span> Eligibility rules applied as the form is keyed — guardian under 18, JADEP at 60.</li>
+      <li class="glass-chip"><span class="font-mono text-gold">03</span> Every step written to the member's interaction log and the audit trail.</li>
     </ul>
-    <div class="text-xs text-brand-200">v{{ VERSION }}{% if DEMO_MODE %} · demonstration environment — synthetic data only{% endif %}</div>
+    <p class="text-xs text-brand-200/90">{{ PRODUCT_NAME }} v{{ VERSION }}{% if DEMO_MODE %} · Demonstration environment — synthetic data only{% endif %}{% if BUILT_BY %} · Built by {{ BUILT_BY }}{% endif %}</p>
   </section>
-  <section class="flex items-center justify-center p-8 bg-white">
-    <div class="w-full max-w-sm">{% block box %}{% endblock %}</div>
+
+  <section class="ja-bars hidden lg:grid" aria-label="Jamaica, Land We Love">
+    <div class="ja-bar ja-black"><span>Jamaica</span></div>
+    <div class="ja-bar ja-gold"><span>Land We</span></div>
+    <div class="ja-bar ja-green"><span>Love</span></div>
+  </section>
+
+  <section class="flex items-center justify-center">
+    <div class="glass-card w-full max-w-sm">{% block box %}{% endblock %}</div>
   </section>
 </div>
 {% endblock %}

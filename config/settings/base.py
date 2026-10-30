@@ -1,4 +1,4 @@
-"""FCC Registry Platform — Member Registration edition (NHF) — base settings.
+"""Member Registration System for the National Health Fund — base settings.
 
 Tender: National Health Fund RFB No. NHF/MRS/2026-09 (GoJEP 1021/1473),
 Member Registration System and Support Services.
@@ -50,10 +50,12 @@ if _railway_domain:
     CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, f"https://{_railway_domain}"]
 ALLOWED_HOSTS = [*ALLOWED_HOSTS, "localhost", "127.0.0.1"]  # container health check
 
-PRODUCT_NAME = "FCC Registry Platform"
+# Product name and optional builder credit shown on screens; set per environment, no code change.
+PRODUCT_NAME = env("PRODUCT_NAME", default="Registry Platform")
+BUILT_BY = env("BUILT_BY", default="")
 EDITION_NAME = "Member Registration"
 CLIENT_NAME = "National Health Fund"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -267,7 +269,7 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
 }
 SPECTACULAR_SETTINGS = {
-    "TITLE": "FCC Registry Platform — Member Registration API",
+    "TITLE": f"{PRODUCT_NAME} — Member Registration API",
     "DESCRIPTION": "Member, application-tracking and online-intake API for the NHF Member Registration System.",
     "VERSION": VERSION,
     "SERVE_INCLUDE_SCHEMA": False,

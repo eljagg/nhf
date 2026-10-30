@@ -20,6 +20,7 @@ def site(request):
     """Product names, version, unread count and navigation."""
     ctx = {
         "PRODUCT_NAME": settings.PRODUCT_NAME,
+        "BUILT_BY": settings.BUILT_BY,
         "EDITION_NAME": settings.EDITION_NAME,
         "CLIENT_NAME": settings.CLIENT_NAME,
         "VERSION": settings.VERSION,
