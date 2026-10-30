@@ -9,6 +9,7 @@ from apps.accounts.roles import ROLES
 ADMIN_PERMS = {
     "back_office": [("rules", None), ("core", "centre"), ("core", "parameter"), ("doctors", "doctor")],
     "ict_admin": [("accounts", "user"), ("accounts", "temporaryrole"), ("auth", "group")],
+    "dpo": [("privacy", None), ("core", "parameter")],
     "auditor": [("core", "auditevent"), ("core", "integrationrun"), ("core", "notification")],
 }
 

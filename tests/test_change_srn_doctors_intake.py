@@ -137,6 +137,7 @@ def test_unknown_doctor_confirmation_then_rejection(agent, manager, taj, run_com
 def test_unknown_doctor_confirmed_makes_application_ready(agent, manager, taj, run_commits):
     app = start(agent, run_commits, "100200301", "Marcia", "Campbell", date(1979, 3, 14))
     app.doctor_mcj = "99902"
+    app.consent_given = True
     services.resolve_doctor(app, user=agent)
     app.save()
     services.set_conditions(app, [(MedicalCondition.objects.get(code="hypertension"), "mild")])
@@ -159,6 +160,7 @@ def test_portal_intake_requires_signature_and_creates_online_application(client,
         "patient": {"trn": "100200301", "first_name": "Marcia", "last_name": "Campbell", "dob": "1979-03-14", "mobile": "876-555-0101"},
         "doctor": {"mcj_number": "10001", "name": "Dr Kevin Spence"},
         "conditions": ["hypertension"],
+        "consent": True,
     }
     assert client.post("/api/intake/portal/", data=payload, content_type="application/json").status_code == 401
     assert _signed(client, payload, secret="wrong").status_code == 401

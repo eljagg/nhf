@@ -17,6 +17,7 @@ from apps.interactions.services import log
 from apps.rules import engine
 from apps.rules.models import RejectionReason
 
+from .identifiers import is_valid_nis, nis_owner, normalise_nis
 from .models import Application, ApplicationCondition, Enrolment, Guardian, Member, MemberCondition, next_member_number
 
 
@@ -76,9 +77,24 @@ def start_application(
 
 def _prefill_from_member(app, member):
     """A change form starts from the member's current record."""
-    for f in ("first_name", "middle_name", "last_name", "dob", "gender", "phone_mobile", "phone_home", "email", "address_line1", "address_line2", "parish"):
+    for f in (
+        "first_name",
+        "middle_name",
+        "last_name",
+        "dob",
+        "gender",
+        "phone_mobile",
+        "phone_home",
+        "email",
+        "address_line1",
+        "address_line2",
+        "parish",
+        "nis_number",
+    ):
         setattr(app, f, getattr(member, f))
     app.collection_centre = member.collection_centre
+    if member.consent_at:  # consent given at registration carries to the member's change forms
+        app.consent_given, app.consent_at, app.consent_version = True, member.consent_at, member.consent_version
     guardian = getattr(member, "guardian", None)
     if guardian:
         app.guardian_name, app.guardian_relationship, app.guardian_trn, app.guardian_phone = (
@@ -242,6 +258,20 @@ def evaluate(app):
         )
     if app.srn_issue and app.srn_issue.status == "requested":
         outcome.findings.append(engine.Finding("SR10001", "warning", "Waiting for management approval of the Special Registration Number."))
+    if not app.consent_given:
+        outcome.findings.append(
+            engine.Finding("JDPA", "error", "Record the applicant's consent to the privacy notice (Data Protection Act 2020) before approval.", "consent_given")
+        )
+    if app.nis_number and not is_valid_nis(app.nis_number):
+        outcome.findings.append(engine.Finding("NIS", "error", f"NIS number {app.nis_number} is not in the accepted format.", "nis_number"))
+    elif app.nis_number:
+        owner = nis_owner(app.nis_number, exclude_member_id=app.member_id)
+        if owner:
+            outcome.findings.append(
+                engine.Finding(
+                    "NIS", "error", f"NIS number {app.nis_number} already belongs to member {owner.member_number} ({owner.full_name}).", "nis_number"
+                )
+            )
     if app.kind == "change" and app.reprint_reason and app.reprint_reason != "replacement" and not app.change_identity:
         outcome.findings.append(
             engine.Finding(
@@ -344,6 +374,9 @@ def _create_member(app):
             collection_centre=app.collection_centre or app.centre,
             registered_centre=app.centre,
             identity_refreshed_at=timezone.now() if not app.is_srn else None,
+            nis_number=normalise_nis(app.nis_number),
+            consent_at=app.consent_at or timezone.now(),
+            consent_version=app.consent_version,
         )
     _write_guardian(member, app)
     _write_conditions(member, app)
@@ -391,6 +424,10 @@ def _apply_change(app, *, user):
             member.identity_refreshed_at = timezone.now()
             member.save()
         app.first_name, app.middle_name, app.last_name, app.dob, app.gender = member.first_name, member.middle_name, member.last_name, member.dob, member.gender
+    if normalise_nis(app.nis_number) != member.nis_number:
+        changed.append("nis_number")
+        member.nis_number = normalise_nis(app.nis_number)
+        member.save(update_fields=["nis_number", "updated_at"])
     if app.change_contact:
         for key in ("phone_mobile", "phone_home", "email", "address_line1", "address_line2", "parish"):
             if getattr(member, key) != getattr(app, key):
@@ -504,7 +541,9 @@ def reject_for_unconfirmed_doctor(doctor, *, user):
 def update_contact(member, *, user, data):
     """MR10006: contact details changed directly on the profile, without an application."""
     changed = []
-    for key in ("phone_mobile", "phone_home", "email", "address_line1", "address_line2", "parish"):
+    if "nis_number" in data:
+        data = {**data, "nis_number": normalise_nis(data["nis_number"])}
+    for key in ("phone_mobile", "phone_home", "email", "address_line1", "address_line2", "parish", "nis_number"):
         if key in data and data[key] != getattr(member, key):
             changed.append(key)
             setattr(member, key, data[key])

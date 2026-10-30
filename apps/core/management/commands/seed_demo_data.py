@@ -72,7 +72,7 @@ DEMO_TAJ = [
 ]
 DEMO_MEMBERS = {  # members already registered, with what NHF held at registration
     "100200306": {"last_name": "Thompson"},
-    "100200307": {},
+    "100200307": {"nis_number": "B204517"},
 }
 
 
@@ -101,6 +101,7 @@ class Command(BaseCommand):
             taj = self._taj(rng, opts["members"])
             self._members(rng, taj, doctors, users)
         self._open_queue(rng, doctors, users)
+        self._privacy_examples(users)
         self.stdout.write(
             self.style.SUCCESS(
                 f"demo: {Member.objects.count()} members, {TajIdentity.objects.count()} TRN identities, {Doctor.objects.count()} doctors, {Application.objects.filter(status__in=Application.OPEN_STATUSES).count()} open applications"
@@ -112,7 +113,8 @@ class Command(BaseCommand):
             cur.execute(
                 "TRUNCATE interactions_interactionnote, interactions_interaction, cards_card, members_applicationcondition, members_application, "
                 "members_membercondition, members_enrolment, members_guardian, members_member, identity_trnvalidation, identity_srnissue, identity_tajidentity, "
-                "doctors_doctor, core_notification, core_integrationrun, accounts_temporaryrole RESTART IDENTITY CASCADE"
+                "doctors_doctor, core_notification, core_integrationrun, accounts_temporaryrole, privacy_datasubjectrequest, privacy_breach, "
+                "privacy_retentionrun, security_securityalert, security_accesslog, security_usersession RESTART IDENTITY CASCADE"
             )
             cur.execute("ALTER SEQUENCE members_member_number_seq RESTART WITH 2000000001")
             cur.execute("ALTER SEQUENCE members_tracking_seq RESTART WITH 1")
@@ -129,6 +131,7 @@ class Command(BaseCommand):
             ("ictadmin.james", "Rohan", "James", "HO", ["ict_admin"], True),
             ("auditor.shaw", "Gail", "Shaw", "HO", ["auditor"], True),
             ("print.reid", "Leroy", "Reid", "HWT", ["print_operator"], False),
+            ("dpo.grant", "Simone", "Grant", "HO", ["dpo"], True),
         ]
         users = {}
         for username, first, last, centre, roles, staff in spec:
@@ -216,6 +219,9 @@ class Command(BaseCommand):
         with connection.cursor() as cur:
             cur.execute("SELECT nextval('members_member_number_seq') FROM generate_series(1, %s)", [len(chosen)])
             numbers = [str(r[0]) for r in cur.fetchall()]
+        nis_numbers = list(
+            {f"{rng.choice('ACDEFGHJKLMNPRSTUVWXYZ')}{rng.randint(100000, 999999)}" for _ in range(len(chosen))}
+        )  # B-series kept for the named demo case
         members = []
         for t, number in zip(chosen, numbers, strict=True):
             centre = rng.choice(centres)
@@ -238,6 +244,9 @@ class Command(BaseCommand):
                     registered_centre=centre,
                     registered_at=registered,
                     identity_refreshed_at=registered,
+                    nis_number=overrides.get("nis_number") or (nis_numbers.pop() if rng.random() < 0.65 else ""),
+                    consent_at=registered,
+                    consent_version="2024-01",
                 )
             )
         Member.objects.bulk_create(members, batch_size=2000)
@@ -297,6 +306,38 @@ class Command(BaseCommand):
         Card.objects.bulk_create(cards, batch_size=2000)
         Interaction.objects.bulk_create(interactions, batch_size=5000)
 
+    def _privacy_examples(self, users):
+        """One open access request and one contained breach, so the Data Protection screens are not empty."""
+        from apps.privacy.models import Breach, DataSubjectRequest
+
+        now = timezone.now()
+        lewis = Member.objects.filter(trn="100200307").first()
+        DataSubjectRequest.objects.create(
+            member=lewis,
+            requester_name=lewis.full_name if lewis else "Andre Lewis",
+            requester_contact=lewis.phone_mobile if lewis else "",
+            identity_checked=True,
+            kind="access",
+            channel="counter",
+            details="Asked at the Half-Way-Tree counter for a copy of everything the Fund holds about him.",
+            received_at=now - timedelta(days=3),
+            due_at=now - timedelta(days=3) + timedelta(days=30),
+            logged_by=users["cc.walker"],
+        )
+        Breach.objects.create(
+            title="Application status e-mail sent to the wrong address (demonstration record)",
+            discovered_at=now - timedelta(hours=20),
+            occurred_at=now - timedelta(hours=26),
+            description="A status e-mail for one applicant was sent to a mistyped address. Synthetic example for the demonstration.",
+            data_categories="Name, tracking number",
+            subjects_affected=1,
+            severity="low",
+            status="contained",
+            contained_at=now - timedelta(hours=18),
+            actions="Recipient asked to delete the message; address corrected on the record.",
+            logged_by=users["dpo.grant"],
+        )
+
     def _open_queue(self, rng, doctors, users):
         """Work in progress so the queues and dashboards are not empty."""
         from apps.intake.services import receive_portal_submission
@@ -326,6 +367,8 @@ class Command(BaseCommand):
             app.save()
             if i % 3:
                 services.set_conditions(app, [(rng.choice(conds), "moderate")])
+                app.consent_given, app.consent_at, app.consent_version = True, timezone.now(), "2026-10"
+                app.save(update_fields=["consent_given", "consent_at", "consent_version"])
             services.refresh_status(app)
         for i, t in enumerate(spare[14:24]):
             doctor = rng.choice(doctors)
@@ -342,6 +385,7 @@ class Command(BaseCommand):
                     },
                     "doctor": {"mcj_number": doctor.mcj_number, "name": f"Dr {doctor.first_name} {doctor.last_name}"},
                     "conditions": [rng.choice(conds).code],
+                    "consent": True,
                 }
             )
         existing = list(Member.objects.exclude(trn__in=[d[0] for d in DEMO_TAJ]).order_by("?")[:3])
@@ -354,6 +398,7 @@ class Command(BaseCommand):
                     "patient": {"trn": m.trn, "first_name": m.first_name, "last_name": m.last_name, "dob": m.dob.isoformat(), "mobile": m.phone_mobile},
                     "doctor": {"mcj_number": doctor.mcj_number, "name": f"Dr {doctor.first_name} {doctor.last_name}"},
                     "conditions": [rng.choice(conds).code],
+                    "consent": True,
                 }
             )
         # One online application from an unknown doctor (MCJ confirmation queue)
@@ -365,6 +410,7 @@ class Command(BaseCommand):
                 "patient": {"trn": t.trn, "first_name": t.first_name, "last_name": t.last_name, "dob": t.dob.isoformat(), "mobile": "876-555-0101"},
                 "doctor": {"mcj_number": "99901", "name": "Dr Simone Barrett"},
                 "conditions": ["hypertension"],
+                "consent": True,
             }
         )
         # Spread the open walk-ins over centres for the dashboard

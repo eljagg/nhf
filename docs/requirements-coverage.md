@@ -1,4 +1,4 @@
-# Requirement coverage — v0.1.0
+# Requirement coverage — v0.2.0
 
 Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Built** = working in this release;
 **Mock** = working end to end against a mock adapter (real endpoint is configuration in Phase B);
@@ -30,7 +30,7 @@ Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Bu
 | Group | Rows | Status | Notes |
 |---|---|---|---|
 | User Management | UM10001, 02, 04, 07, 08, 09, 10, 11 | Built | Sign-in, accounts via back office, TOTP MFA by role, temporary roles, Argon2, audit, TRN identity check, axes lockout + admin lock |
-| | UM10003 | A3 | Self-service account recovery |
+| | UM10003 | Built | Self-service password reset by e-mail (v0.2) |
 | | UM10005, UM10006 | B | AD over LDAPS and OIDC/Entra (packages in `requirements-integrations.txt`) |
 | Data Management | DM10001, DM10002, DM10004, DM10005 | Built | Fernet field encryption for TRN payloads and notes, TLS at the proxy; role-based access + audit; separate settings per environment |
 | | DM10003 | B | pgBackRest on NHF's servers |
@@ -38,14 +38,25 @@ Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Bu
 | | IN10002, IN10004, IN10007 | Mock | SOAP TRN client, PHI, SMS behind adapters |
 | | IN10005 | A2 | Signature pad |
 | Audit | AL10001, AL10002 | Built | Append-only audit (DB-enforced) with user, IP and request id; error logging to the container log |
-| Notifications | NT10001, NT10004 | Built | In-app inbox, e-mail, SMS preview, links to records |
+| Notifications | NT10001, NT10004 | Built | In-app inbox, e-mail, SMS preview, links to records; security and data-protection alerts (v0.2) |
 | | NT10002, NT10003 | A3 | Recurring reminders, escalation of overdue items |
 | Reporting and Analytics | RA10001–03 | A3 | |
 | Compliance and Security | CS10002, CS10005 | Built | Conditions masked outside clinical roles; CSP with nonces, CSRF, secure cookies, lockout |
-| | CS10001, CS10003, CS10004 | A3 / B | JDPA artefacts, threat alerts, VAPT by Brian |
+| | CS10001, CS10003 | Built | Data Protection Act module and security alerts (v0.2) — see docs/data-protection.md, docs/security.md |
+| | CS10004 | B | VAPT before go-live; docs/security.md is the tester's checklist |
 | Performance | PF10002 | Built | TRN calls off the request path with polling; indexed lookups |
 | | PF10001 | A2 | Counter-to-dispatch timing |
 | Availability, Scalability, Portability | PT10001–02, SC10001 | Built | One container image for web/worker/beat; stateless web tier |
 | | AV10001–02, SC10002 | B | Two app nodes, DB replica, downtime procedure |
 | Usability | US10001–03 | Built | Keyboard-first counter screen, configuration without code, queues and status badges |
 | Maintainability | MU10001–03 | Built | Parameters in the back office, OpenAPI, separate environments |
+
+## Beyond the workbooks (added at the Fund's request)
+
+| Item | Status |
+|---|---|
+| NIS number on members and applications | Built (v0.2) |
+| Per-user activity tracking with export | Built (v0.2) |
+| Data-subject requests, breach register, processing register, retention | Built (v0.2) |
+| Excel/CSV and SQL Server/MySQL import; PostgreSQL, MySQL, SQL Server, Oracle and ODBC connectors | Planned v0.4 |
+| Medical-institution connections with NHF approval | Planned v0.5 |

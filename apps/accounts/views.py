@@ -12,7 +12,9 @@ from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import Group
+from django.contrib.auth.views import PasswordChangeView, PasswordResetConfirmView, PasswordResetView
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
@@ -158,9 +160,75 @@ def revoke_temporary_role(request, pk):
 
 @login_required
 def my_account(request):
-    """Who am I and what can I do."""
+    """Who am I, what can I do, where am I signed in."""
+    from apps.security.services import active_sessions
+
     return render(
         request,
         "accounts/me.html",
-        {"roles": sorted(role_names(request.user)), "catalogue": ROLES, "temp": request.user.temporary_roles.select_related("group")[:10]},
+        {
+            "roles": sorted(role_names(request.user)),
+            "catalogue": ROLES,
+            "temp": request.user.temporary_roles.select_related("group")[:10],
+            "sessions": active_sessions(request.user),
+            "current_key": request.session.session_key,
+        },
     )
+
+
+@require_POST
+@login_required
+def end_other_sessions(request):
+    """Sign out of every other browser or device."""
+    from apps.security.services import end_sessions
+
+    count = end_sessions(request.user, by=request.user, reason="signed out by the user from another session", keep_key=request.session.session_key)
+    messages.success(request, f"Signed out of {count} other session(s).")
+    return redirect("accounts:me")
+
+
+class StaffPasswordChangeView(PasswordChangeView):
+    """Change password (also where expired passwords are sent)."""
+
+    template_name = "accounts/password_change.html"
+    success_url = reverse_lazy("accounts:me")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        audit.record("auth.password_changed", self.request.user, f"{self.request.user.username} changed their password")
+        messages.success(self.request, "Password changed.")
+        return response
+
+
+class ThrottledPasswordResetView(PasswordResetView):
+    """Self-service reset by e-mail; at most five requests an hour from one address. The response never reveals whether the e-mail exists."""
+
+    template_name = "accounts/password_reset.html"
+    email_template_name = "accounts/password_reset_email.txt"
+    subject_template_name = "accounts/password_reset_subject.txt"
+    success_url = reverse_lazy("accounts:password-reset-done")
+
+    def form_valid(self, form):
+        from django.core.cache import cache
+
+        from apps.security.signals import client_ip
+
+        key = f"pwreset:{client_ip(self.request)}"
+        count = cache.get(key, 0)
+        if count >= 5:
+            return redirect(self.success_url)
+        cache.set(key, count + 1, 3600)
+        audit.record("auth.password_reset_requested", None, f"Password reset requested for {form.cleaned_data.get('email', '')[:80]}")
+        return super().form_valid(form)
+
+
+class AuditedPasswordResetConfirmView(PasswordResetConfirmView):
+    """Set the new password from the e-mailed link."""
+
+    template_name = "accounts/password_reset_confirm.html"
+    success_url = reverse_lazy("accounts:password-reset-complete")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        audit.record("auth.password_reset", form.user, f"{form.user.username} reset their password by e-mail link", actor=form.user)
+        return response

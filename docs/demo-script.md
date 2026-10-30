@@ -44,3 +44,11 @@ Doctors: MCJ numbers `10001`, `10008`, `10015` … are in the register. `99901` 
 
 Card printing, verification by swipe and dispatch with signature (design plan steps 6) arrive in sprint A2;
 dashboards and saved reports (step 8) in A3.
+
+## v0.2 additions
+
+10. **NIS number** — search `B204517` in the top bar: it opens member 100200307 (Andre Lewis). Edit his NIS on the profile; try another member's NIS on an application — blocked as a duplicate.
+11. **Consent** — any open application: the red *JDPA* check stays until the consent box under the privacy notice is ticked and saved.
+12. **User activity** — as `auditor.shaw`: *User activity* → `cc.walker` → every page and event of the session, then *Export CSV*.
+13. **Security** — sign in five times with a wrong password for `cc.brown`: a high alert appears on *Security* and in managers' inboxes; the account shows under *Locked accounts* with *Unlock* (application administrator).
+14. **Data protection** — as `dpo.grant`: *Privacy dashboard* → the open access request from Andre Lewis → *Download copy of the member's data*; the release appears on his interaction log. *Breach register* shows the hours left to report to the Information Commissioner.

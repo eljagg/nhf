@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">Processing register</h1>
+<p class="text-sm text-slate-600 mb-4">What personal data the system processes, why, on what basis, who receives it and for how long. The Data Protection Officer maintains it in the back office.</p>
+<div class="space-y-4">
+{% for a in rows %}<div class="card"><div class="card-h"><h2>{{ a.name }}</h2>{% if a.sensitive %}<span class="b-amber">Sensitive data</span>{% endif %}</div><div class="card-b"><dl class="kv">
+  <dt>Purpose</dt><dd>{{ a.purpose }}</dd><dt>Lawful basis</dt><dd>{{ a.lawful_basis }}</dd><dt>People</dt><dd>{{ a.data_subjects }}</dd><dt>Data</dt><dd>{{ a.data_categories }}</dd><dt>Recipients</dt><dd>{{ a.recipients|default:"—" }}</dd><dt>Retention</dt><dd>{{ a.retention }}</dd><dt>Security</dt><dd>{{ a.security_measures|default:"—" }}</dd><dt>Transfers abroad</dt><dd>{{ a.transfers_outside_jamaica }}</dd></dl></div></div>
+{% empty %}<div class="card card-b text-slate-500">No activities recorded.</div>{% endfor %}
+</div>
+{% endblock %}

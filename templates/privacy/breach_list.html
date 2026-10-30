@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">Breach register</h1>
+<p class="text-sm text-slate-600 mb-4">Every personal-data breach, however small. The clock to report to the Information Commissioner starts when the breach is discovered.</p>
+<div class="grid xl:grid-cols-[1fr_28rem] gap-5">
+  <div class="card overflow-x-auto"><table class="tbl"><thead><tr><th>Reference</th><th>Breach</th><th>Severity</th><th>Discovered</th><th>Status</th><th>Commissioner</th></tr></thead><tbody>
+  {% for b in rows %}<tr><td><a class="font-mono" href="{% url 'privacy:breach-detail' b.pk %}">{{ b.reference }}</a></td><td>{{ b.title }}</td><td>{{ b.get_severity_display }}</td><td>{{ b.discovered_at|date:"j M Y H:i" }}</td><td>{{ b.get_status_display }}</td><td>{% if b.reported_to_commissioner_at %}<span class="b-green">{{ b.reported_to_commissioner_at|date:"j M H:i" }}</span>{% elif b.status == "closed" %}<span class="b-grey">not required</span>{% elif b.report_overdue %}<span class="b-red">overdue</span>{% else %}<span class="b-amber">{{ b.hours_left }} h left</span>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="text-slate-500">No breaches recorded.</td></tr>{% endfor %}</tbody></table></div>
+  {% if can_edit %}<form method="post" class="card card-b space-y-3 self-start">{% csrf_token %}<h2>Log a breach</h2>
+    {% for f in form %}<div><label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>{% endfor %}
+    <button class="btn-primary">Log breach</button></form>{% endif %}
+</div>
+{% endblock %}

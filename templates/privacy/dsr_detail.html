@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-2 mb-1"><h1 class="font-mono">{{ dsr.reference }}</h1><span class="b-brand">{{ dsr.get_kind_display }}</span>{% if dsr.overdue %}<span class="b-red">Overdue</span>{% endif %}<span class="b-grey">{{ dsr.get_status_display }}</span></div>
+<p class="text-sm text-slate-500 mb-4">Received {{ dsr.received_at|date:"j M Y H:i" }} ({{ dsr.get_channel_display }}) · due {{ dsr.due_at|date:"j M Y" }}{% if dsr.completed_at %} · completed {{ dsr.completed_at|date:"j M Y" }}{% endif %}</p>
+<div class="grid xl:grid-cols-2 gap-5">
+  <div class="card"><div class="card-h"><h2>Request</h2></div><div class="card-b space-y-3"><dl class="kv"><dt>From</dt><dd>{{ dsr.requester_name }}</dd><dt>Contact</dt><dd>{{ dsr.requester_contact|default:"—" }}</dd><dt>Identity checked</dt><dd>{% if dsr.identity_checked %}<span class="b-green">Yes</span>{% else %}<span class="b-amber">Not yet</span>{% endif %}</dd><dt>Member</dt><dd>{% if dsr.member %}<span class="font-mono">{{ dsr.member.member_number }}</span> {{ dsr.member.full_name }}{% else %}not linked{% endif %}</dd><dt>Copies released</dt><dd>{{ dsr.export_count }}</dd></dl>
+    <p class="text-sm">{{ dsr.details|linebreaksbr }}</p>
+    {% if can_edit and not dsr.member %}<form method="post" class="flex gap-2">{% csrf_token %}<input class="inp" name="link_member" placeholder="Member number, TRN or NIS" aria-label="Member"><button class="btn-secondary btn-sm">Link member</button></form>{% endif %}
+    {% if can_edit and dsr.member and dsr.kind == "access" %}<a class="btn-primary" href="{% url 'privacy:dsr-export' dsr.pk %}">Download copy of the member's data (JSON)</a><p class="text-xs text-slate-500">Every download is recorded on the request, in the audit trail and in the member's interaction log.</p>{% endif %}
+    {% if dsr.member and dsr.kind == "correction" %}<p class="text-sm">Corrections are made with a change form on the member's record (name and date of birth only through the TRN service).</p>{% endif %}
+  </div></div>
+  {% if can_edit %}<form method="post" class="card card-b space-y-3 self-start">{% csrf_token %}<h2>Progress</h2>
+    {% for f in form %}<div>{% if f.field.widget.input_type == "checkbox" %}<label class="flex items-center gap-2 text-sm">{{ f }} {{ f.label }}</label>{% else %}<label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% endif %}</div>{% endfor %}
+    <button class="btn-primary">Save</button></form>{% else %}<div class="card card-b"><h2>Response</h2><p class="text-sm mt-2">{{ dsr.response|default:"—"|linebreaksbr }}</p></div>{% endif %}
+</div>
+{% endblock %}

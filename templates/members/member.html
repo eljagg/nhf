@@ -12,10 +12,10 @@
 <div class="grid xl:grid-cols-[1fr_26rem] gap-5">
   <div class="space-y-5 min-w-0">
     <div class="card"><div class="card-h"><h2>Identity</h2><span class="lock">🔒 changed only through the TRN Validator</span></div>
-      <div class="card-b"><dl class="kv"><dt>Name</dt><dd>{{ m.full_name }}</dd><dt>Date of birth</dt><dd>{{ m.dob|date:"j M Y" }} (age {{ m.age }})</dd><dt>Gender</dt><dd>{{ m.get_gender_display }}</dd><dt>Last refreshed</dt><dd>{{ m.identity_refreshed_at|date:"j M Y H:i"|default:"—" }}</dd>{% if guardian %}<dt>Guardian</dt><dd>{{ guardian.full_name }} ({{ guardian.relationship }}){% if guardian.phone %} · {{ guardian.phone }}{% endif %}</dd>{% endif %}</dl></div></div>
+      <div class="card-b"><dl class="kv"><dt>Name</dt><dd>{{ m.full_name }}</dd><dt>Date of birth</dt><dd>{{ m.dob|date:"j M Y" }} (age {{ m.age }})</dd><dt>Gender</dt><dd>{{ m.get_gender_display }}</dd><dt>NIS number</dt><dd class="font-mono">{{ m.nis_number|default:"—" }}</dd><dt>Consent</dt><dd>{% if m.consent_at %}{{ m.consent_at|date:"j M Y" }} · notice v{{ m.consent_version|default:"—" }}{% else %}<span class="b-amber">Not recorded (migrated)</span>{% endif %}</dd><dt>Last refreshed</dt><dd>{{ m.identity_refreshed_at|date:"j M Y H:i"|default:"—" }}</dd>{% if guardian %}<dt>Guardian</dt><dd>{{ guardian.full_name }} ({{ guardian.relationship }}){% if guardian.phone %} · {{ guardian.phone }}{% endif %}</dd>{% endif %}</dl></div></div>
 
     <form method="post" class="card">{% csrf_token %}<input type="hidden" name="action" value="contact">
-      <div class="card-h"><h2>Contact details</h2><span class="text-xs text-slate-500">editable without an application</span></div>
+      <div class="card-h"><h2>Contact details and NIS</h2><span class="text-xs text-slate-500">editable without an application</span></div>
       <div class="card-b grid md:grid-cols-3 gap-4">
         {% for f in contact_form %}<div class="{% if 'address' in f.name %}md:col-span-{% if f.name == 'address_line1' %}2{% else %}2{% endif %}{% endif %}"><label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>{% endfor %}
         <div class="self-end">{% if can_process %}<button class="btn-secondary">Save contact details</button>{% endif %}</div>

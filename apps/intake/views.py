@@ -83,6 +83,7 @@ def simulate(request):
             "patient": patient,
             "doctor": {"mcj_number": doctor.mcj_number, "name": f"Dr {doctor.first_name} {doctor.last_name}"},
             "conditions": [rng.choice(["hypertension", "diabetes", "asthma", "glaucoma", "arthritis"])],
+            "consent": True,
         }
     )
     messages.success(request, f"Portal submission received as {app.tracking_number} ({app.get_kind_display().lower()}).")

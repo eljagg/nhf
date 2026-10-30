@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.2.0 — 29 October 2026 — NIS, user tracking, security, Data Protection Act
+
+- **NIS number** on members, applications and change forms; accepted format is a back-office parameter (default one letter + six digits, or nine digits); duplicates blocked; searchable in tracking search; in the API and the access-request export; editable on the profile without an application.
+- **User tracking**: every page, search, download and API call by a signed-in user is logged with the record touched, status, time taken and address. *User activity* screen per user and date range with CSV export (both audited). Sessions recorded with device and address; users can sign out their other sessions; administrators can sign a user out everywhere.
+- **Security**: self-service password reset by e-mail (throttled, no account enumeration); password expiry (90 days) and history (last 5); letters-plus-number rule; MFA now also required before reaching *My account*, *Temporary roles* and password change; security alerts for repeated failed sign-ins (per username and per address), bulk record viewing and failed TRN checks, notified to administrators and managers; *Security* dashboard with alerts, locked accounts (unlock), active sessions, two-step coverage and password age. Lockout is now per username so one mistyping agent cannot lock a whole centre's shared PC. `docs/security.md` maps the controls to OWASP ASVS for NHF's penetration test.
+- **Data Protection Act 2020**: consent to the privacy notice recorded on every application (required before approval) and on the member; data-subject requests with reference, due date, identity check and JSON copy of the member's data (release logged); breach register with the 72-hour reporting clock; processing register (six activities seeded); daily retention sweep with preview (anonymises old rejected applications, purges old access-log rows and notifications); new *Data Protection Officer* role; `docs/data-protection.md`.
+- Fixed: contact-detail edits on the member profile were not being saved.
+
 ## v0.1.3 — 29 October 2026
 
 - Dark mode for every signed-in screen, switched with the ☾/☀ Theme button in the top bar. The choice is remembered per browser; a first visit follows the computer's light/dark setting. Applied before the page draws, so there is no white flash.

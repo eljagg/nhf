@@ -2,8 +2,12 @@
 {% block content %}
 <h1 class="mb-4">My account</h1>
 <div class="grid md:grid-cols-2 gap-4">
-  <div class="card"><div class="card-h"><h2>{{ user.display_name }}</h2></div><div class="card-b"><dl class="kv"><dt>Username</dt><dd>{{ user.username }}</dd><dt>Centre</dt><dd>{{ user.centre|default:"—" }}</dd><dt>Two-step sign-in</dt><dd>{% if user.is_verified %}<span class="b-green">Verified this session</span>{% else %}<span class="b-grey">Not in use</span>{% endif %} <a class="text-xs" href="{% url 'accounts:mfa-setup' %}">set up</a></dd></dl></div></div>
+  <div class="card"><div class="card-h"><h2>{{ user.display_name }}</h2></div><div class="card-b"><dl class="kv"><dt>Username</dt><dd>{{ user.username }}</dd><dt>Centre</dt><dd>{{ user.centre|default:"—" }}</dd><dt>Two-step sign-in</dt><dd>{% if user.is_verified %}<span class="b-green">Verified this session</span>{% else %}<span class="b-grey">Not in use</span>{% endif %} <a class="text-xs" href="{% url 'accounts:mfa-setup' %}">set up</a></dd><dt>Password</dt><dd>changed {{ user.password_changed_at|date:"j M Y" }} · <a class="text-xs" href="{% url 'accounts:password-change' %}">change</a></dd></dl></div></div>
   <div class="card"><div class="card-h"><h2>Roles now in force</h2></div><div class="card-b space-y-2">{% for r in roles %}<div><span class="b-brand">{{ r }}</span> <span class="text-sm text-slate-600">{% for k, v in catalogue.items %}{% if k == r %}{{ v.1 }}{% endif %}{% endfor %}</span></div>{% empty %}<p class="text-sm">No roles.</p>{% endfor %}
   {% if temp %}<h3 class="text-sm font-semibold mt-4">Temporary grants</h3>{% for t in temp %}<div class="text-sm">{{ t.group.name }} until {{ t.expires_at }} {% if t.is_active %}<span class="b-green">active</span>{% else %}<span class="b-grey">ended</span>{% endif %}</div>{% endfor %}{% endif %}</div></div>
 </div>
+<div class="card mt-4"><div class="card-h"><h2>Where you are signed in</h2>{% if sessions|length > 1 %}<form method="post" action="{% url 'accounts:end-other-sessions' %}">{% csrf_token %}<button class="btn-secondary btn-sm">Sign out of all other sessions</button></form>{% endif %}</div>
+<table class="tbl"><thead><tr><th>Device</th><th>Address</th><th>Signed in</th><th>Last active</th><th></th></tr></thead><tbody>
+{% for s in sessions %}<tr><td>{{ s.device }}</td><td class="font-mono text-xs">{{ s.ip_address|default:"—" }}</td><td>{{ s.created_at|date:"j M Y H:i" }}</td><td>{{ s.last_seen|timesince }} ago</td><td>{% if s.session_key == current_key %}<span class="b-green">This session</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="5" class="text-slate-500">No tracked sessions.</td></tr>{% endfor %}
+</tbody></table></div>
 {% endblock %}

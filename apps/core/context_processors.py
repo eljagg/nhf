@@ -40,6 +40,16 @@ def site(request):
     online = Application.objects.filter(channel="online", status__in=Application.OPEN_STATUSES).count() if has_role(user, *proc) else None
     srn = SrnIssue.objects.filter(status="requested").count() if has_role(user, "manager", "srn_approver") else None
     mcj = Doctor.objects.filter(status="pending").count() if has_role(user, "manager", "mcj_confirmer") else None
+    alerts_open = dsr_open = breach_open = None
+    if has_role(user, "ict_admin", "manager", "auditor"):
+        from apps.security.models import SecurityAlert
+
+        alerts_open = SecurityAlert.objects.filter(acknowledged_at__isnull=True).count()
+    if has_role(user, "dpo", "manager", "auditor"):
+        from apps.privacy.models import Breach, DataSubjectRequest
+
+        dsr_open = DataSubjectRequest.objects.filter(status__in=("open", "in_progress")).count()
+        breach_open = Breach.objects.filter(reported_to_commissioner_at__isnull=True).exclude(status="closed").count()
     sections = [
         (
             "Members",
@@ -79,12 +89,23 @@ def site(request):
             ],
         ),
         (
+            "Data protection",
+            [
+                _item("Privacy dashboard", "privacy:dashboard", request, ("dpo", "manager", "auditor"), dsr_open),
+                _item("Requests from members", "privacy:dsr-list", request, ("dpo", "manager", "auditor")),
+                _item("Breach register", "privacy:breach-list", request, ("dpo", "manager", "auditor"), breach_open),
+                _item("Processing register", "privacy:register", request, ("dpo", "manager", "auditor")),
+            ],
+        ),
+        (
             "Registry Core",
             [
+                _item("Security", "security:dashboard", request, ("ict_admin", "manager", "auditor"), alerts_open),
+                _item("User activity", "security:activity", request, ("ict_admin", "manager", "auditor")),
                 _item("Audit trail", "core:audit", request, ("auditor", "manager", "ict_admin")),
                 _item("Integration Hub log", "core:integrations", request, ("ict_admin", "manager", "auditor")),
                 _item("Temporary roles", "accounts:temporary-roles", request, ("manager", "ict_admin")),
-                _item("Back office (configuration)", "admin:index", request, ("back_office", "ict_admin", "auditor")),
+                _item("Back office (configuration)", "admin:index", request, ("back_office", "ict_admin", "auditor", "dpo")),
                 _item("API documentation", "api-docs", request, ("ict_admin", "manager")),
             ],
         ),

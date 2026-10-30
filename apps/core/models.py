@@ -57,6 +57,28 @@ class Parameter(models.Model):
         "srn-prefix": ("9", "First digit of every Special Registration Number (SR10002)."),
         "work-lock-seconds": (90, "A record is shown as being worked on while the agent's heartbeat is newer than this (OR10010)."),
         "counter-target-minutes": (15, "Target time from entry to dispatch at the counter (PF10001)."),
+        "nis-format-regex": (
+            r"^([A-Z][0-9]{6}|[0-9]{9})$",
+            "Accepted NIS number format (regular expression). Default: one letter + six digits, or nine digits.",
+        ),
+        "privacy-notice-version": ("2026-10", "Version of the privacy notice applicants consent to (Data Protection Act 2020)."),
+        "privacy-notice-text": (
+            "The National Health Fund collects your personal details and the medical conditions certified by your doctor to register you for "
+            "NHF benefits, produce your NHF Card and process your benefit claims. Your information is shared only with the Tax Administration "
+            "(TRN validation), the Medical Council (doctor confirmation), the claims adjudicator and card production, and is kept in line with "
+            "the Fund's retention policy. You may ask for a copy of your information or for it to be corrected.",
+            "Privacy notice shown on the application form.",
+        ),
+        "access-log-retention-days": (365, "Days to keep the page-by-page access log."),
+        "password-max-age-days": (90, "Staff passwords expire after this many days (0 = never)."),
+        "password-history-count": (5, "A new password may not repeat any of the last N passwords."),
+        "alert-bulk-view-per-hour": (60, "Raise a security alert when one user opens more member profiles than this in an hour."),
+        "alert-failed-logins": (5, "Raise a security alert after this many failed sign-ins for one username within 15 minutes."),
+        "alert-failed-logins-address": (20, "Raise a security alert after this many failed sign-ins from one address (any usernames) within 15 minutes."),
+        "alert-failed-trn-per-hour": (10, "Raise a security alert when one user's invalid or mismatched TRN checks exceed this in an hour."),
+        "dsr-days": (30, "Days allowed to answer a data-subject request."),
+        "breach-report-hours": (72, "Hours to report a personal-data breach to the Information Commissioner."),
+        "retention-rejected-days": (730, "Rejected/terminated applications are anonymised after this many days."),
     }
 
     @classmethod

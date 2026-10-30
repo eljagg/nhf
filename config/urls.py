@@ -18,6 +18,8 @@ urlpatterns = [
     path("interactions/", include("apps.interactions.urls")),
     path("intake/", include("apps.intake.urls")),
     path("api/", include("apps.api.urls")),
+    path("security/", include("apps.security.urls")),
+    path("privacy/", include("apps.privacy.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="api-schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="api-schema"), name="api-docs"),
     path("backoffice/", admin.site.urls),

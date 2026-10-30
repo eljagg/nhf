@@ -98,6 +98,10 @@ def perform_validation(validation_id):
     from apps.members.services import on_validation_complete
 
     on_validation_complete(validation)
+    if validation.status == "invalid" or validation.match_result == "mismatch":
+        from apps.security.services import check_trn_failures
+
+        check_trn_failures(validation.requested_by)
     return validation
 
 

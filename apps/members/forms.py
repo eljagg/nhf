@@ -93,6 +93,8 @@ class ApplicationForm(forms.ModelForm):
     class Meta:
         model = Application
         fields = [
+            "nis_number",
+            "consent_given",
             "phone_mobile",
             "phone_home",
             "email",
@@ -126,6 +128,19 @@ class ApplicationForm(forms.ModelForm):
             for field in self.fields.values():
                 field.disabled = True
 
+    def clean_nis_number(self):
+        """Normalised; must match the configured NIS format and not belong to another member."""
+        from .identifiers import is_valid_nis, nis_owner, normalise_nis
+
+        value = normalise_nis(self.cleaned_data.get("nis_number", ""))
+        if value and not is_valid_nis(value):
+            raise forms.ValidationError("Not a valid NIS number for the configured format.")
+        member_id = self.instance.pk if isinstance(self.instance, Member) else self.instance.member_id
+        owner = nis_owner(value, exclude_member_id=member_id)
+        if owner:
+            raise forms.ValidationError(f"Already recorded for member {owner.member_number}.")
+        return value
+
     def clean_guardian_trn(self):
         """Optional; nine digits when given."""
         value = "".join(ch for ch in self.cleaned_data.get("guardian_trn", "") if ch.isdigit())
@@ -154,12 +169,25 @@ class ContactForm(forms.ModelForm):
 
     class Meta:
         model = Member
-        fields = ["phone_mobile", "phone_home", "email", "address_line1", "address_line2", "parish"]
+        fields = ["nis_number", "phone_mobile", "phone_home", "email", "address_line1", "address_line2", "parish"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["parish"].choices = [("", "—")] + PARISHES
         _style(self)
+
+    def clean_nis_number(self):
+        """Normalised; must match the configured NIS format and not belong to another member."""
+        from .identifiers import is_valid_nis, nis_owner, normalise_nis
+
+        value = normalise_nis(self.cleaned_data.get("nis_number", ""))
+        if value and not is_valid_nis(value):
+            raise forms.ValidationError("Not a valid NIS number for the configured format.")
+        member_id = self.instance.pk if isinstance(self.instance, Member) else self.instance.member_id
+        owner = nis_owner(value, exclude_member_id=member_id)
+        if owner:
+            raise forms.ValidationError(f"Already recorded for member {owner.member_number}.")
+        return value
 
 
 class SrnRequestForm(forms.Form):

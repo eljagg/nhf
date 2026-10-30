@@ -79,6 +79,12 @@ def receive_portal_submission(payload: dict) -> Application:
         app.email = str(patient.get("email", ""))[:200] or app.email
         app.doctor_mcj = str(doctor.get("mcj_number", ""))[:12]
         app.referring_doctor_name = str(doctor.get("name", ""))[:120]
+        if patient.get("nis"):
+            from apps.members.identifiers import normalise_nis
+
+            app.nis_number = normalise_nis(str(patient["nis"]))[:12]
+        if payload.get("consent") is True:  # the portal records the patient's consent with the doctor
+            app.consent_given, app.consent_at, app.consent_version = True, timezone.now(), str(payload.get("consent_version", "portal"))[:20]
         if kind == "change":
             app.change_conditions = True
         member_services.resolve_doctor(app, user=None)

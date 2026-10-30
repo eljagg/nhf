@@ -13,6 +13,13 @@ class User(AbstractUser):
     staff_number = models.CharField(max_length=20, blank=True)
     locked_until = models.DateTimeField(null=True, blank=True, help_text="Temporary lock set by an administrator (UM10011).")
     lock_reason = models.CharField(max_length=200, blank=True)
+    password_changed_at = models.DateTimeField(default=timezone.now, help_text="Drives password expiry.")
+
+    def set_password(self, raw_password):
+        """Record when the password changed; the new hash is added to the password history on save."""
+        super().set_password(raw_password)
+        self.password_changed_at = timezone.now()
+        self._password_changed_now = True
 
     def display_name(self):
         """Full name or username."""

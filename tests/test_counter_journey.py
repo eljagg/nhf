@@ -38,6 +38,7 @@ def start(agent, run_commits, trn, first, last, dob, **kw):
 def complete(app, agent, doctor, *codes, guardian=False):
     app.doctor_mcj = doctor.mcj_number
     app.phone_mobile = "876-555-0100"
+    app.consent_given = True
     if guardian:
         app.guardian_name, app.guardian_relationship = "Janet Brown", "Mother"
     services.resolve_doctor(app, user=agent)

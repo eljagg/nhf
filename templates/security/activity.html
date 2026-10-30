@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">User activity</h1>
+<p class="text-sm text-slate-600 mb-4">Every business event and every page, search and download by one user, with the address it came from. Viewing or exporting this page is itself recorded.</p>
+<form class="card card-b flex flex-wrap gap-3 items-end mb-5">
+  <div><label class="lbl" for="user">User</label><select id="user" name="user" class="inp w-56"><option value="">Choose…</option>{% for u in users %}<option value="{{ u.pk }}" {% if target.pk == u.pk %}selected{% endif %}>{{ u.username }}{% if u.get_full_name %} — {{ u.get_full_name }}{% endif %}</option>{% endfor %}</select></div>
+  <div><label class="lbl" for="from">From</label><input id="from" type="date" name="from" class="inp" value="{{ start|date:'Y-m-d' }}"></div>
+  <div><label class="lbl" for="to">To</label><input id="to" type="date" name="to" class="inp" value="{{ end|date:'Y-m-d' }}"></div>
+  <button class="btn-primary">Show</button>
+  {% if target %}<a class="btn-secondary" href="{% url 'security:activity-csv' %}?user={{ target.pk }}&from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}">Export CSV</a>{% endif %}
+</form>
+{% if target %}
+<div class="grid xl:grid-cols-[1fr_24rem] gap-5">
+  <div class="card min-w-0 overflow-x-auto"><div class="card-h"><h2>{{ target.display_name }} <span class="text-sm font-normal text-slate-500">{{ start|date:"j M" }} – {{ end|date:"j M Y" }}</span></h2></div>
+    <table class="tbl"><thead><tr><th>Time</th><th>Type</th><th>Action or page</th><th>Record / detail</th><th>Address</th></tr></thead><tbody>
+    {% for r in page %}<tr><td class="whitespace-nowrap">{{ r.at|date:"j M H:i:s" }}</td><td>{% if r.kind == "event" %}<span class="b-brand">event</span>{% else %}<span class="b-grey">page{% if r.status >= 400 %} {{ r.status }}{% endif %}</span>{% endif %}</td><td class="font-mono text-xs break-all max-w-md">{{ r.what }}</td><td class="text-xs min-w-56">{{ r.detail }}</td><td class="font-mono text-xs">{{ r.ip|default:"" }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="text-slate-500">No activity in this period.</td></tr>{% endfor %}</tbody></table>
+    {% include "_pager.html" %}</div>
+  <aside class="space-y-5">
+    <div class="card"><div class="card-h"><h2>Summary</h2></div><div class="card-b"><dl class="kv"><dt>Business events</dt><dd>{{ events_count }}</dd><dt>Pages and calls</dt><dd>{{ pages_count }}</dd><dt>Members opened</dt><dd>{{ members_opened }}</dd><dt>Roles now</dt><dd>{% for r in roles %}<span class="b-brand">{{ r }}</span> {% empty %}—{% endfor %}</dd><dt>Account</dt><dd>{% if target.is_active %}active{% else %}disabled{% endif %}</dd></dl></div></div>
+    <div class="card"><div class="card-h"><h2>Sessions</h2>{% if can_control %}<form method="post" action="{% url 'security:end-sessions' target.pk %}">{% csrf_token %}<button class="btn-danger btn-sm" data-confirm="Sign {{ target.username }} out of every browser and device?">Sign out everywhere</button></form>{% endif %}</div>
+      <ul class="divide-y divide-slate-100">{% for s in sessions %}<li class="px-4 py-2 text-sm"><div class="flex justify-between"><span>{{ s.device }}</span>{% if s.ended_at %}<span class="b-grey">ended</span>{% else %}<span class="b-green">open</span>{% endif %}</div><div class="text-xs text-slate-500">{{ s.ip_address|default:"—" }} · {{ s.created_at|date:"j M H:i" }} → {% if s.ended_at %}{{ s.ended_at|date:"j M H:i" }} ({{ s.end_reason }}){% else %}last active {{ s.last_seen|timesince }} ago{% endif %}</div></li>{% empty %}<li class="px-4 py-2 text-sm text-slate-500">No sessions recorded.</li>{% endfor %}</ul></div>
+  </aside>
+</div>
+{% endif %}
+{% endblock %}

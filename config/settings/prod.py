@@ -10,4 +10,4 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SILENCED_SYSTEM_CHECKS = ["security.W021"]  # HSTS preload is a domain-owner decision for NHF, not an application default
+SILENCED_SYSTEM_CHECKS = ["security.W021", "axes.W006"]  # HSTS preload is a domain-owner decision for NHF, not an application default

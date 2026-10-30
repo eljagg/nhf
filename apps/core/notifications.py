@@ -22,6 +22,9 @@ TEMPLATES = {
         "NHF: Application {tracking} is approved. Member no. {member_number}. Your card will be ready at {centre}.",
     ),
     "application-rejected": ("Application not approved", "NHF: Application {tracking} could not be approved: {reason}. Call 1-888-NHF-LINK for help."),
+    "security-alert": ("Security alert", "{message}"),
+    "dsr-received": ("Data-subject request {reference}", "{kind} request from {name} received; answer due {due}."),
+    "breach-logged": ("Personal-data breach {reference}", "Breach logged: {title}. Report to the Information Commissioner by {deadline}."),
     "srn-approval-needed": ("SRN approval needed", "{requester} asked for a Special Registration Number for {name} (DOB {dob}). Reason: {reason}."),
     "doctor-confirmation-needed": (
         "Doctor confirmation needed",

@@ -55,7 +55,7 @@ PRODUCT_NAME = env("PRODUCT_NAME", default="Registry Platform")
 BUILT_BY = env("BUILT_BY", default="")
 EDITION_NAME = "Member Registration"
 CLIENT_NAME = "National Health Fund"
-VERSION = "0.1.3"
+VERSION = "0.2.0"
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -88,6 +88,8 @@ LOCAL_APPS = [
     "apps.interactions",
     "apps.intake",
     "apps.api",
+    "apps.security",
+    "apps.privacy",
 ]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -104,6 +106,8 @@ MIDDLEWARE = [
     "apps.accounts.middleware.MFAEnforcementMiddleware",
     "apps.core.middleware.CurrentUserMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "apps.security.middleware.PasswordExpiryMiddleware",
+    "apps.security.middleware.AccessLogMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "csp.middleware.CSPMiddleware",
     "axes.middleware.AxesMiddleware",
@@ -171,6 +175,7 @@ CELERY_BEAT_SCHEDULE = {
     "print-queue-daily-reset": {"task": "apps.cards.tasks.daily_queue_reset", "schedule": timedelta(hours=24)},
     "jadep-at-60-sweep": {"task": "apps.members.tasks.jadep_sweep", "schedule": timedelta(hours=24)},
     "expire-temporary-roles": {"task": "apps.accounts.tasks.expire_temporary_roles", "schedule": timedelta(minutes=15)},
+    "retention-sweep": {"task": "apps.privacy.tasks.retention_sweep", "schedule": timedelta(hours=24)},
 }
 
 # ----------------------------------------------------------------------------
@@ -195,14 +200,19 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "apps.accounts.validators.ComplexityValidator"},
+    {"NAME": "apps.accounts.validators.PasswordHistoryValidator"},
 ]
 # Roles whose members must use TOTP (UM10004). MFA_REQUIRED=1 enforces it for every staff user.
 MFA_REQUIRED = env("MFA_REQUIRED")
-MFA_REQUIRED_ROLES = ["manager", "ict_admin", "db_admin"]
+MFA_REQUIRED_ROLES = ["manager", "ict_admin", "db_admin", "dpo"]
 
 AXES_FAILURE_LIMIT = env("AXES_FAILURE_LIMIT")
 AXES_COOLOFF_TIME = timedelta(minutes=env("AXES_COOLOFF_MINUTES"))
-AXES_LOCKOUT_PARAMETERS = ["username", ["ip_address", "user_agent"]]
+# Lock the account being attacked, not the counter PC: centres share PCs and one public address, so an address-based lock
+# would lock out every agent at a centre after one person mistypes. Address-wide attempts raise a security alert instead.
+AXES_LOCKOUT_PARAMETERS = ["username"]
+SILENCED_SYSTEM_CHECKS = ["axes.W006"]  # deliberate: see the comment above
 AXES_RESET_ON_SUCCESS = True
 AXES_LOCKOUT_TEMPLATE = "accounts/locked_out.html"
 

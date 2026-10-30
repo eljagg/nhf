@@ -9,7 +9,9 @@ from django.urls import reverse
 
 from .roles import has_role
 
-OPEN_PATHS = ("/accounts/", "/static/", "/healthz", "/api/intake/")
+# Reachable before the second factor is verified. Everything else under /accounts/ (my account, temporary roles,
+# password change) needs MFA like any other page.
+OPEN_PATHS = ("/accounts/login/", "/accounts/logout/", "/accounts/mfa/", "/accounts/password/reset/", "/static/", "/healthz", "/api/intake/")
 
 
 class SessionIdleMiddleware:

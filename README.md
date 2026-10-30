@@ -81,5 +81,6 @@ domain is trusted automatically. Health check: `/healthz`.
 | `ictadmin.james` | Application administrator | Users and roles — MFA on first sign-in, no member access |
 | `auditor.shaw` | Auditor | Read-only, conditions masked, audit trail |
 | `print.reid` | Card print operator | Print queue |
+| `dpo.grant` | Data Protection Officer | Requests from members, breach register, processing register, retention — MFA on first sign-in |
 
 Demonstration cases are in `docs/demo-script.md`.

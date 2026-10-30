@@ -15,6 +15,7 @@ ROLES = {
     "back_office": ("Back-office power user", "Configures programmes, benefits, medical conditions and reference data."),
     "ict_admin": ("Application administrator", "Manages user accounts and roles. No access to member records."),
     "db_admin": ("Database administrator", "Database operations only; kept separate from application administration."),
+    "dpo": ("Data Protection Officer", "Data-subject requests, breach register, processing register, retention (Data Protection Act 2020)."),
     "auditor": ("Auditor", "Read-only access to records and the audit trail; medical conditions masked."),
     # process-specific roles
     "srn_approver": ("SRN approver", "May approve Special Registration Numbers."),

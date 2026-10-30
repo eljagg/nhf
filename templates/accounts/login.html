@@ -11,5 +11,6 @@
   <div><label class="glass-lbl" for="id_password">Password</label><input class="glass-inp" id="id_password" type="password" name="password" autocomplete="current-password" required></div>
   <button class="glass-btn w-full">Sign in</button>
 </form>
+<p class="mt-4 text-right"><a class="text-sm text-white/85 underline-offset-2 hover:underline" href="{% url 'accounts:password-reset' %}">Forgot your password?</a></p>
 <p class="text-xs text-white/65 mt-6">Active Directory and single sign-on are connected during implementation on NHF's network.</p>
 {% endblock %}

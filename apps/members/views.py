@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.roles import MEMBER_ROLES, PROCESS_ROLES, can_view_conditions, has_role, role_required
 from apps.core import audit
-from apps.core.models import Centre
+from apps.core.models import Centre, Parameter
 from apps.identity import services as identity
 from apps.intake import services as intake
 from apps.interactions.services import log
@@ -21,6 +21,7 @@ from apps.rules.models import Programme, RejectionReason
 
 from . import services
 from .forms import ApplicationForm, ContactForm, InteractionForm, RecheckForm, RejectForm, SrnRequestForm, StartForm
+from .identifiers import normalise_nis
 from .models import SEVERITIES, Application, Member
 
 
@@ -144,6 +145,7 @@ def _context(request, app, form=None, condition_rows=None):
         "recheck_form": RecheckForm(initial={"form_first_name": app.form_first_name, "form_last_name": app.form_last_name, "form_dob": app.form_dob}),
         "srn_form": SrnRequestForm(auto_id="srn_%s", initial={"first_name": app.form_first_name, "last_name": app.form_last_name, "dob": app.form_dob}),
         "interactions": app.interactions.select_related("actor").prefetch_related("notes")[:40],
+        "privacy_notice": Parameter.get("privacy-notice-text"),
         "locked_by": app.worked_by_other(request.user),
         "page_title": app.tracking_number,
     }
@@ -167,6 +169,11 @@ def application(request, tracking):
         rows = _condition_rows(app, request.POST) if can_view_conditions(request.user) else None
         if form.is_valid():
             app = form.save(commit=False)
+            if app.consent_given and not app.consent_at:
+                app.consent_at = timezone.now()
+                app.consent_version = str(Parameter.get("privacy-notice-version"))
+            elif not app.consent_given:
+                app.consent_at, app.consent_version = None, ""
             services.resolve_doctor(app, user=request.user)
             app.save()
             if rows is not None:
@@ -355,7 +362,8 @@ def assign(request, tracking):
 def member(request, member_number):
     """Member profile (MR10014–MR10016)."""
     m = get_object_or_404(Member.objects.select_related("collection_centre", "registered_centre"), member_number=member_number)
-    contact_form = ContactForm(request.POST or None, instance=m, prefix="c")
+    # The form gets its own copy: validation writes into its instance, and update_contact compares against the stored record.
+    contact_form = ContactForm(request.POST or None, instance=Member.objects.get(pk=m.pk), prefix="c")
     if request.method == "POST" and request.POST.get("action") == "contact":
         if not has_role(request.user, *PROCESS_ROLES):
             return redirect("members:member", member_number=member_number)
@@ -428,9 +436,13 @@ def search(request):
             app = Application.objects.filter(tracking_number__iexact=q.upper()).first()
             if app:
                 return redirect("members:application", tracking=app.tracking_number)
+        nis = normalise_nis(q)
         if len(digits) == 9 and digits == q.replace(" ", "").replace("-", ""):
-            members = Member.objects.filter(trn=digits)
-            apps = Application.objects.filter(trn=digits)
+            members = Member.objects.filter(Q(trn=digits) | Q(nis_number=digits))
+            apps = Application.objects.filter(Q(trn=digits) | Q(nis_number=digits))
+        elif re.fullmatch(r"[A-Z][0-9]{6}", nis):
+            members = Member.objects.filter(nis_number=nis)
+            apps = Application.objects.filter(nis_number=nis)
         elif len(digits) == 10 and digits == q.strip():
             members = Member.objects.filter(member_number=digits)
             apps = Application.objects.filter(member__member_number=digits)

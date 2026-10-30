@@ -42,7 +42,7 @@ class MemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Member
-        fields = ["member_number", "trn", "is_srn", "first_name", "last_name", "dob", "gender", "status", "programmes"]
+        fields = ["member_number", "trn", "is_srn", "nis_number", "first_name", "last_name", "dob", "gender", "status", "programmes"]
 
     def get_programmes(self, obj) -> list[str]:
         """Open enrolments."""

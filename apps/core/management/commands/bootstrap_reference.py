@@ -6,6 +6,7 @@ All of it is configurable afterwards in the back office; the lists are confirmed
 from django.core.management.base import BaseCommand
 
 from apps.core.models import Centre, Parameter
+from apps.privacy.models import ProcessingActivity
 from apps.rules.models import Benefit, MedicalCondition, Programme, RejectionReason
 
 CENTRES = [
@@ -71,6 +72,70 @@ REASONS = [
 ]
 
 
+PROCESSING = [
+    (
+        "Member registration and eligibility",
+        "Register applicants for NHF benefits, decide eligibility and keep the member record.",
+        "Necessary to perform the Fund's statutory functions; explicit consent for health data",
+        "Applicants, members, guardians of minors",
+        "Name, date of birth, gender, TRN/SRN, NIS number, contact details, address, guardian details, certified medical conditions",
+        True,
+        "Customer Care and back-office staff of the Fund",
+        "For the life of the membership, then per the Fund's retention schedule",
+    ),
+    (
+        "TRN validation",
+        "Confirm the applicant's identity against the Tax Administration Jamaica register.",
+        "Statutory function; identity verification required by the Fund",
+        "Applicants, guardians",
+        "TRN, name, date of birth, gender, address returned by the Tax Office",
+        False,
+        "Tax Administration Jamaica via the ICT Authority",
+        "Validation results kept as audit evidence for the life of the record",
+    ),
+    (
+        "Doctor validation",
+        "Confirm the certifying doctor with the Medical Council of Jamaica.",
+        "Statutory function",
+        "Doctors",
+        "Name, MCJ registration number, practice and contact details",
+        False,
+        "Medical Council of Jamaica",
+        "While the doctor remains on the NHF Doctors register",
+    ),
+    (
+        "Claims adjudication and card production",
+        "Pass beneficiary records to the claims adjudicator and produce the NHF Card.",
+        "Necessary to deliver the benefit",
+        "Members",
+        "Member number, name, date of birth, programmes, card data",
+        True,
+        "Claims adjudication system (PHI); card production (ID Works)",
+        "For the life of the membership",
+    ),
+    (
+        "Notifications",
+        "Tell applicants about their application by SMS and e-mail.",
+        "Necessary to deliver the service",
+        "Applicants, members",
+        "Mobile number, e-mail address, tracking number",
+        False,
+        "SMS gateway provider; e-mail relay",
+        "Message log kept 12 months",
+    ),
+    (
+        "Staff accounts and audit",
+        "Control access to the system and keep an audit trail of every action.",
+        "Legitimate interest and security obligations under the Act",
+        "Staff users",
+        "Name, username, centre, roles, sign-in records, pages and records accessed, IP address",
+        False,
+        "Fund ICT and auditors",
+        "Access log 12 months; audit trail for the life of the system",
+    ),
+]
+
+
 class Command(BaseCommand):
     help = "Load reference data (idempotent; existing rows are left as configured)."
 
@@ -95,6 +160,20 @@ class Command(BaseCommand):
             RejectionReason.objects.get_or_create(code=code, defaults={"label": label, "is_system": system})
         for key, (value, desc) in Parameter.DEFAULTS.items():
             Parameter.objects.get_or_create(key=key, defaults={"value": value, "description": desc})
+        for name, purpose, basis, subjects, cats, sensitive, recipients, retention in PROCESSING:
+            ProcessingActivity.objects.get_or_create(
+                name=name,
+                defaults={
+                    "purpose": purpose,
+                    "lawful_basis": basis,
+                    "data_subjects": subjects,
+                    "data_categories": cats,
+                    "sensitive": sensitive,
+                    "recipients": recipients,
+                    "retention": retention,
+                    "security_measures": "Role-based access, MFA for privileged roles, field-level encryption of sensitive data, append-only audit, TLS",
+                },
+            )
         Parameter.objects.get_or_create(
             key="mock-trn-service-down", defaults={"value": False, "description": "Demo only: makes the mock TRN adapter time out, to show the outage path."}
         )

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div><h1>Data protection</h1><p class="text-sm text-slate-500">Data Protection Act 2020 — requests from members, breaches, consent, retention and the processing register.</p></div>
+  <div class="flex gap-2"><a class="btn-secondary" href="{% url 'privacy:dsr-list' %}">Requests</a><a class="btn-secondary" href="{% url 'privacy:breach-list' %}">Breach register</a><a class="btn-secondary" href="{% url 'privacy:register' %}">Processing register</a></div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+  <div class="stat"><div class="stat-n">{{ dsrs|length }}</div><div class="stat-l">Open requests</div></div>
+  <div class="stat"><div class="stat-n">{{ breaches|length }}</div><div class="stat-l">Breaches not closed</div></div>
+  <div class="stat"><div class="stat-n">{{ consent_pct }}%</div><div class="stat-l">Members with consent recorded</div></div>
+  <div class="stat"><div class="stat-n">{{ open_without_consent }}</div><div class="stat-l">Open applications without consent</div></div>
+  <div class="stat"><div class="stat-n">{{ activities }}</div><div class="stat-l">Processing activities</div></div>
+</div>
+<div class="grid xl:grid-cols-2 gap-5">
+  <div class="card"><div class="card-h"><h2>Requests from members</h2><span class="text-xs text-slate-500">answer within the set number of days</span></div>
+    <table class="tbl"><thead><tr><th>Reference</th><th>Request</th><th>From</th><th>Due</th></tr></thead><tbody>
+    {% for r in dsrs %}<tr><td><a class="font-mono" href="{% url 'privacy:dsr-detail' r.pk %}">{{ r.reference }}</a></td><td>{{ r.get_kind_display }}</td><td>{{ r.requester_name }}</td><td>{% if r.overdue %}<span class="b-red">overdue {{ r.due_at|date:"j M" }}</span>{% elif r.days_left <= 5 %}<span class="b-amber">{{ r.days_left }} days</span>{% else %}<span class="b-grey">{{ r.days_left }} days</span>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="4" class="text-slate-500">No open requests.</td></tr>{% endfor %}</tbody></table></div>
+  <div class="card"><div class="card-h"><h2>Breaches</h2><span class="text-xs text-slate-500">report to the Information Commissioner within the deadline</span></div>
+    <table class="tbl"><thead><tr><th>Reference</th><th>Breach</th><th>Status</th><th>Commissioner</th></tr></thead><tbody>
+    {% for b in breaches %}<tr><td><a class="font-mono" href="{% url 'privacy:breach-detail' b.pk %}">{{ b.reference }}</a></td><td>{{ b.title }}</td><td>{{ b.get_status_display }}</td><td>{% if b.reported_to_commissioner_at %}<span class="b-green">reported</span>{% elif b.report_overdue %}<span class="b-red">overdue</span>{% else %}<span class="b-amber">{{ b.hours_left }} h left</span>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="4" class="text-slate-500">No open breaches.</td></tr>{% endfor %}</tbody></table></div>
+  <div class="card"><div class="card-h"><h2>Retention</h2>{% if last_run %}<span class="text-xs text-slate-500">last run {{ last_run.at|date:"j M Y H:i" }}</span>{% endif %}</div><div class="card-b space-y-2 text-sm">
+    <div class="flex justify-between"><span>Rejected / terminated applications to anonymise</span><span class="font-semibold tabular-nums">{{ retention_due.rejected_applications }}</span></div>
+    <div class="flex justify-between"><span>Access-log rows past their retention</span><span class="font-semibold tabular-nums">{{ retention_due.access_log }}</span></div>
+    <div class="flex justify-between"><span>Notifications older than 12 months</span><span class="font-semibold tabular-nums">{{ retention_due.notifications }}</span></div>
+    <p class="text-xs text-slate-500">Runs automatically every day. Approved members are never removed by the sweep. Periods are set under Parameters in the back office.</p>
+    <form method="post" action="{% url 'privacy:retention-run' %}" class="flex gap-2 pt-1">{% csrf_token %}<button class="btn-secondary btn-sm" name="dry_run" value="1">Preview</button><button class="btn-secondary btn-sm" name="dry_run" value="0" data-confirm="Run the retention sweep now? Anonymising is permanent.">Run now</button></form>
+  </div></div>
+  <div class="card"><div class="card-h"><h2>Consent</h2></div><div class="card-b text-sm space-y-2">
+    <p>{{ with_consent }} of {{ members }} members have consent recorded. Privacy notice version in use: <span class="font-mono">{{ notice_version }}</span>.</p>
+    <p class="text-slate-500">Every application must record the applicant's consent before it can be approved; doctor-portal submissions carry the consent the patient gave the doctor. Change the notice text and version under Parameters.</p>
+  </div></div>
+</div>
+{% endblock %}

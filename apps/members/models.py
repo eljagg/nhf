@@ -38,6 +38,9 @@ class Member(models.Model):
     member_number = models.CharField(max_length=12, unique=True)
     trn = models.CharField("TRN / SRN", max_length=9, unique=True)
     is_srn = models.BooleanField(default=False)
+    nis_number = models.CharField("NIS number", max_length=12, blank=True, db_index=True, help_text="National Insurance Scheme number (optional).")
+    consent_at = models.DateTimeField(null=True, blank=True, help_text="When the member consented to processing (Data Protection Act 2020).")
+    consent_version = models.CharField(max_length=20, blank=True)
     srn_annotation = models.CharField(max_length=120, blank=True, help_text="Shown with the number when it is an SRN (SR10005).")
     first_name = models.CharField(max_length=60)
     middle_name = models.CharField(max_length=60, blank=True)
@@ -60,6 +63,7 @@ class Member(models.Model):
     class Meta:
         ordering = ["last_name", "first_name"]
         indexes = [models.Index(fields=["last_name", "first_name"]), models.Index(fields=["dob"])]
+        constraints = [models.UniqueConstraint(fields=["nis_number"], condition=~models.Q(nis_number=""), name="uniq_member_nis")]
 
     def __str__(self):
         return f"{self.full_name} ({self.member_number})"
@@ -166,6 +170,7 @@ class Application(models.Model):
     # Identity
     trn = models.CharField("TRN / SRN", max_length=9, db_index=True, blank=True)
     is_srn = models.BooleanField(default=False)
+    nis_number = models.CharField("NIS number", max_length=12, blank=True)
     srn_issue = models.ForeignKey("identity.SrnIssue", null=True, blank=True, on_delete=models.SET_NULL, related_name="applications")
     trn_validation = models.ForeignKey("identity.TrnValidation", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     identity_confirmed = models.BooleanField(default=False)
@@ -207,6 +212,11 @@ class Application(models.Model):
     change_identity = models.BooleanField("refresh name/DOB from TRN service", default=False)
     reprint_reason = models.CharField(max_length=12, choices=REPRINT_REASONS, blank=True)
 
+    # Data Protection Act 2020: consent to processing, incl. health data
+    consent_given = models.BooleanField("applicant consents to the processing described in the privacy notice", default=False)
+    consent_at = models.DateTimeField(null=True, blank=True)
+    consent_version = models.CharField(max_length=20, blank=True)
+
     # Online intake
     portal_reference = models.CharField(max_length=60, blank=True, db_index=True)
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_applications")
@@ -218,6 +228,7 @@ class Application(models.Model):
     rejection_text = models.CharField(max_length=300, blank=True)
     decided_at = models.DateTimeField(null=True, blank=True)
     decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    anonymised_at = models.DateTimeField(null=True, blank=True, help_text="Personal details removed under the retention policy.")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

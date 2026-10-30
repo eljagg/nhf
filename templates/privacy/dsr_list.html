@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">Data-subject requests</h1>
+<p class="text-sm text-slate-600 mb-4">A member asking for a copy of their data, a correction, or to object to or delete it. Each request gets a reference and a due date.</p>
+<div class="grid xl:grid-cols-[1fr_24rem] gap-5">
+  <div class="card overflow-x-auto"><table class="tbl"><thead><tr><th>Reference</th><th>Request</th><th>From</th><th>Member</th><th>Received</th><th>Due</th><th>Status</th></tr></thead><tbody>
+  {% for r in rows %}<tr><td><a class="font-mono" href="{% url 'privacy:dsr-detail' r.pk %}">{{ r.reference }}</a></td><td>{{ r.get_kind_display }}</td><td>{{ r.requester_name }}</td><td>{% if r.member %}<span class="font-mono">{{ r.member.member_number }}</span>{% else %}—{% endif %}</td><td>{{ r.received_at|date:"j M Y" }}</td><td>{% if r.overdue %}<span class="b-red">{{ r.due_at|date:"j M" }}</span>{% else %}{{ r.due_at|date:"j M Y" }}{% endif %}</td><td>{{ r.get_status_display }}</td></tr>
+  {% empty %}<tr><td colspan="7" class="text-slate-500">No requests yet.</td></tr>{% endfor %}</tbody></table></div>
+  {% if can_edit %}<form method="post" class="card card-b space-y-3 self-start">{% csrf_token %}<h2>Log a request</h2>
+    {% for f in form %}<div>{% if f.field.widget.input_type == "checkbox" %}<label class="flex items-center gap-2 text-sm">{{ f }} {{ f.label }}</label>{% else %}<label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% endif %}{% for e in f.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>{% endfor %}
+    <button class="btn-primary">Log request</button></form>{% endif %}
+</div>
+{% endblock %}

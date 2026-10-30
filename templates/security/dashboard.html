@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div><h1>Security</h1><p class="text-sm text-slate-500">Alerts, sign-ins, locked accounts, sessions, two-step coverage and password age. Controls are listed in docs/security.md.</p></div>
+  <a class="btn-secondary" href="{% url 'security:activity' %}">User activity</a>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+  <div class="stat"><div class="stat-n">{{ alerts|length }}</div><div class="stat-l">Open alerts</div></div>
+  <div class="stat"><div class="stat-n">{{ failed_24h }}</div><div class="stat-l">Failed sign-ins (24 h)</div></div>
+  <div class="stat"><div class="stat-n">{{ logins_24h }}</div><div class="stat-l">Sign-ins (24 h)</div></div>
+  <div class="stat"><div class="stat-n">{{ locked|length }}</div><div class="stat-l">Locked accounts</div></div>
+  <div class="stat"><div class="stat-n">{{ sessions|length }}</div><div class="stat-l">Active sessions</div></div>
+</div>
+<div class="grid xl:grid-cols-[1fr_26rem] gap-5">
+  <div class="space-y-5 min-w-0">
+    <div class="card"><div class="card-h"><h2>Open alerts</h2><span class="text-xs text-slate-500">administrators and managers are notified in their inbox</span></div>
+      <table class="tbl"><thead><tr><th>When</th><th>Severity</th><th>Alert</th><th>User</th>{% if can_control %}<th>Acknowledge</th>{% endif %}</tr></thead><tbody>
+      {% for a in alerts %}<tr><td class="whitespace-nowrap">{{ a.at|date:"j M H:i" }}</td><td>{% if a.severity == "high" %}<span class="b-red">High</span>{% elif a.severity == "medium" %}<span class="b-amber">Medium</span>{% else %}<span class="b-grey">Low</span>{% endif %}</td><td>{{ a.message }}</td><td>{% if a.user %}<a href="{% url 'security:activity' %}?user={{ a.user.pk }}">{{ a.user.username }}</a>{% else %}{{ a.subject }}{% endif %}</td>
+        {% if can_control %}<td><form method="post" action="{% url 'security:acknowledge' a.pk %}" class="flex gap-1">{% csrf_token %}<input class="inp py-0.5 text-xs w-40" name="note" placeholder="What was done" aria-label="Note"><button class="btn-secondary btn-sm">OK</button></form></td>{% endif %}</tr>
+      {% empty %}<tr><td colspan="5" class="text-slate-500">No open alerts.</td></tr>{% endfor %}</tbody></table></div>
+
+    <div class="card"><div class="card-h"><h2>Active sessions</h2></div>
+      <table class="tbl"><thead><tr><th>User</th><th>Device</th><th>Address</th><th>Signed in</th><th>Last active</th></tr></thead><tbody>
+      {% for s in sessions %}<tr><td><a href="{% url 'security:activity' %}?user={{ s.user.pk }}">{{ s.user.username }}</a></td><td>{{ s.device }}</td><td class="font-mono text-xs">{{ s.ip_address|default:"—" }}</td><td>{{ s.created_at|date:"j M H:i" }}</td><td>{{ s.last_seen|timesince }} ago</td></tr>
+      {% empty %}<tr><td colspan="5" class="text-slate-500">No active sessions.</td></tr>{% endfor %}</tbody></table></div>
+
+    {% if recent_alerts %}<div class="card"><div class="card-h"><h2>Recently acknowledged</h2></div><table class="tbl"><tbody>
+      {% for a in recent_alerts %}<tr><td class="whitespace-nowrap">{{ a.at|date:"j M H:i" }}</td><td>{{ a.message }}</td><td class="text-xs">{{ a.acknowledged_by.username }}: {{ a.note|default:"—" }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+  </div>
+  <aside class="space-y-5">
+    <div class="card"><div class="card-h"><h2>Locked accounts</h2></div><div class="card-b space-y-2">
+      {% for l in locked %}<div class="flex items-center justify-between gap-2 text-sm"><span><span class="font-mono">{{ l.username }}</span> <span class="text-xs text-slate-500">{{ l.failures_since_start }} failures · {{ l.ip_address }}</span></span>{% if can_control %}<form method="post" action="{% url 'security:unlock' %}">{% csrf_token %}<input type="hidden" name="username" value="{{ l.username }}"><button class="btn-secondary btn-sm">Unlock</button></form>{% endif %}</div>
+      {% empty %}<p class="text-sm text-slate-500">None. Accounts lock after repeated failed attempts for 15 minutes.</p>{% endfor %}
+    </div></div>
+    <div class="card"><div class="card-h"><h2>Two-step sign-in coverage</h2></div><div class="card-b space-y-2">
+      {% for r in mfa_rows %}<div class="flex justify-between text-sm"><span>{{ r.role }}</span><span>{% if r.holders == r.enrolled %}<span class="b-green">{{ r.enrolled }}/{{ r.holders }} enrolled</span>{% else %}<span class="b-amber">{{ r.enrolled }}/{{ r.holders }} enrolled</span>{% endif %}</span></div>{% endfor %}
+      <p class="text-xs text-slate-500">These roles cannot use the system until they enrol an authenticator.</p>
+    </div></div>
+    <div class="card"><div class="card-h"><h2>Password age</h2><span class="text-xs text-slate-500">{% if max_age %}expire after {{ max_age }} days{% else %}expiry off{% endif %}</span></div><div class="card-b text-sm space-y-1">
+      {% for u in expired %}<div class="flex justify-between"><span>{{ u.username }}</span><span class="b-red">expired</span></div>{% endfor %}
+      {% for u in expiring %}<div class="flex justify-between"><span>{{ u.username }}</span><span class="b-amber">expires within 14 days</span></div>{% endfor %}
+      {% if not expired and not expiring %}<p class="text-slate-500">No passwords expired or about to expire.</p>{% endif %}
+    </div></div>
+  </aside>
+</div>
+{% endblock %}

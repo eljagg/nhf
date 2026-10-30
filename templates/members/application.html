@@ -43,6 +43,8 @@
       </div>
       {% endif %}
       <div class="card-b grid md:grid-cols-3 gap-4">
+        <div><label class="lbl" for="id_nis_number">NIS number <span class="font-normal text-slate-500">(optional)</span></label>{{ form.nis_number }}{% for e in form.nis_number.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>
+        <div class="md:col-span-2"></div>
         <div><label class="lbl" for="id_phone_mobile">Mobile</label>{{ form.phone_mobile }}</div>
         <div><label class="lbl" for="id_phone_home">Home phone</label>{{ form.phone_home }}</div>
         <div><label class="lbl" for="id_email">E-mail</label>{{ form.email }}{% for e in form.email.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>
@@ -76,6 +78,11 @@
           {% endfor %}
         </div>
         {% else %}<p class="text-sm text-slate-500">Hidden for your role — medical conditions are shown only to staff who process eligibility.</p>{% endif %}
+      </div>
+      <div class="card-b border-t border-slate-100">
+        <div class="text-sm font-semibold mb-1">Privacy notice and consent <span class="font-normal text-slate-500">— Data Protection Act 2020</span></div>
+        <p class="text-sm text-slate-600 mb-2">{{ privacy_notice }}</p>
+        <label class="flex items-start gap-2 text-sm"><span class="pt-0.5">{{ form.consent_given }}</span> <span>The applicant has read (or been read) the privacy notice and consents to the processing it describes, including their health information.{% if app.consent_at %} <span class="text-xs text-slate-500">Recorded {{ app.consent_at|date:"j M Y H:i" }} · notice v{{ app.consent_version }}</span>{% endif %}</span></label>
       </div>
       {% if can_process and not locked_by %}<div class="px-4 pb-4"><button class="btn-primary">Save and check</button></div>{% endif %}
     </form>
