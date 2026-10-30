@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.4 — 29 October 2026 — cleaner logs and error pages
+
+- Friendly pages for "not part of your role" (403), "not found" (404) and server errors (500), inside the app with a way back, instead of Django's bare text.
+- Logs: informational lines go to stdout and only warnings and errors to stderr, so the Railway log shows `[err]` for real problems only. Refused (403) and missing (404) pages are no longer logged with a traceback; they remain in the access log. Axes and gunicorn start-up chatter removed.
+- Link scanners that fetch `/accounts/login/%3Fnext=/` (with the `?` encoded) are redirected to the sign-in page instead of getting a 404.
+
 ## v0.2.3 — 29 October 2026 — security review fixes, Active Directory state followed in-session, Data Protection Act additions
 
 Security (independent code review; every finding has a regression test):

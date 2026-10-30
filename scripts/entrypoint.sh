@@ -24,9 +24,10 @@ schema_step() {
 case "${1:-web}" in
   web)
     if [ "${MIGRATE_ON_START:-1}" = "1" ]; then schema_step; fi
+    echo "[entrypoint] starting web server on port ${PORT} with ${WEB_CONCURRENCY} workers"
     exec gunicorn config.wsgi:application --bind "0.0.0.0:${PORT}" --workers "${WEB_CONCURRENCY}" --threads "${GUNICORN_THREADS:-4}" \
       --worker-class gthread --timeout 60 --graceful-timeout 30 --keep-alive 5 --max-requests 2000 --max-requests-jitter 200 \
-      --access-logfile - --error-logfile - --forwarded-allow-ips="*" ;;
+      --access-logfile - --error-logfile - --log-level warning --forwarded-allow-ips="*" ;;
   worker) exec celery -A config worker --loglevel=INFO --concurrency "${CELERY_CONCURRENCY:-4}" -Q celery,identity,notify ;;
   beat)   exec celery -A config beat --loglevel=INFO ;;
   migrate) schema_step ;;

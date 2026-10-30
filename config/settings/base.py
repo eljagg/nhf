@@ -75,7 +75,7 @@ PRODUCT_NAME = env("PRODUCT_NAME", default="Registry Platform")
 BUILT_BY = env("BUILT_BY", default="")
 EDITION_NAME = "Member Registration"
 CLIENT_NAME = "National Health Fund"
-VERSION = "0.2.3"
+VERSION = "0.2.4"
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -382,13 +382,25 @@ USE_TZ = True
 DATE_FORMAT = "j M Y"
 DATETIME_FORMAT = "j M Y, H:i"
 
+# Informational lines go to stdout and warnings/errors to stderr, so hosting dashboards (Railway shows stderr as [err])
+# only flag real problems. A refused page (403) is logged as one line, without a traceback.
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "below_warning": {"()": "apps.core.logfilters.BelowWarning"},
+        "quiet_403": {"()": "apps.core.logfilters.Quiet403"},
+    },
     "formatters": {"plain": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"}},
-    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
-    "root": {"handlers": ["console"], "level": "INFO"},
-    "loggers": {"django.db.backends": {"level": "WARNING"}},
+    "handlers": {
+        "stdout": {"class": "logging.StreamHandler", "stream": "ext://sys.stdout", "formatter": "plain", "filters": ["below_warning"]},
+        "stderr": {"class": "logging.StreamHandler", "stream": "ext://sys.stderr", "formatter": "plain", "level": "WARNING", "filters": ["quiet_403"]},
+    },
+    "root": {"handlers": ["stdout", "stderr"], "level": "INFO"},
+    "loggers": {
+        "django.db.backends": {"level": "WARNING"},
+        "axes": {"level": "WARNING"},  # sign-ins are already in the audit trail and session records
+    },
 }
 
 # Shows the "synthetic demo data" marker and enables the portal simulator. Off on NHF's servers.

@@ -2,7 +2,7 @@
 
 from django.conf import settings
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 admin.site.site_header = f"{settings.PRODUCT_NAME} — back office"
@@ -19,7 +19,16 @@ def _backoffice_login(request, extra_context=None):
 
 admin.site.login = _backoffice_login
 
+
+def _encoded_login(request, rest=""):
+    """Some link scanners fetch '/accounts/login/%3Fnext=/' (the '?' encoded): send them to the real sign-in page."""
+    from django.shortcuts import redirect
+
+    return redirect("/accounts/login/")
+
+
 urlpatterns = [
+    re_path(r"^accounts/login/\?(?P<rest>.*)$", _encoded_login),
     path("", include("apps.core.urls")),
     path("accounts/oidc/", include("apps.directory.urls_oidc")),
     path("accounts/", include("apps.accounts.urls")),

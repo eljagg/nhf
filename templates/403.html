@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}No access{% endblock %}
+{% block content %}
+<div class="card card-b max-w-xl">
+  <h1 class="mb-2">This page is not part of your role</h1>
+  <p class="text-sm text-slate-600 mb-4">Your account does not include access to this screen. If you need it for your work, ask your manager to request the role for you (application administrators raise it, a manager approves it).</p>
+  <p class="text-sm text-slate-600 mb-4">If someone else was signed in on this computer a moment ago, you may have followed their link or pressed Back into their page.</p>
+  <div class="flex gap-2"><a class="btn-primary" href="{% url 'core:home' %}">Go to Home</a><a class="btn-secondary" href="{% url 'accounts:me' %}">See my roles</a></div>
+</div>
+{% endblock %}
+{% block public %}<main class="min-h-screen grid place-items-center p-6"><div class="card card-b max-w-md text-center"><h1 class="mb-2">Sign in first</h1><p class="text-sm text-slate-600 mb-4">This page needs a staff sign-in.</p><a class="btn-primary" href="{% url 'accounts:login' %}">Sign in</a></div></main>{% endblock %}
