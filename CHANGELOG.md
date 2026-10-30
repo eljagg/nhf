@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.5 — 29 October 2026 — build fix
+
+- Fixed: the Docker image build failed at `collectstatic` because the production check for `FIELD_ENCRYPTION_KEY` (added in v0.2.3) also ran during the build, where hosting variables are not available. The check now runs when the app starts, not while the image is built. A test runs the Dockerfile's build command with no variables so this cannot return.
+- Dockerfile header no longer names a company.
+
 ## v0.2.4 — 29 October 2026 — cleaner logs and error pages
 
 - Friendly pages for "not part of your role" (403), "not found" (404) and server errors (500), inside the app with a way back, instead of Django's bare text.

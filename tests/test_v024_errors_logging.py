@@ -46,3 +46,27 @@ def test_info_goes_to_stdout_only():
     f = BelowWarning()
     assert f.filter(logging.LogRecord("x", logging.INFO, __file__, 1, "ok", None, None))
     assert not f.filter(logging.LogRecord("x", logging.ERROR, __file__, 1, "bad", None, None))
+
+
+def test_docker_build_step_runs_without_runtime_secrets(tmp_path):
+    """The Dockerfile's collectstatic line must work with no Railway variables (they are not passed to the build)."""
+    import os
+    import re
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    line = next(line for line in (root / "Dockerfile").read_text().splitlines() if "collectstatic" in line)
+    assigns = dict(re.findall(r"(\w+)=(\S+)", line.split("python")[0]))
+    env = {
+        "PATH": os.environ["PATH"],
+        "HOME": str(tmp_path),
+        "DJANGO_SETTINGS_MODULE": "config.settings.prod",
+        "STATIC_ROOT": str(tmp_path / "static"),
+        **assigns,
+    }
+    result = subprocess.run(
+        [sys.executable, "manage.py", "collectstatic", "--noinput", "--dry-run"], cwd=root, env=env, capture_output=True, text=True, timeout=120
+    )
+    assert result.returncode == 0, result.stderr[-800:]

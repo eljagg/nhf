@@ -21,7 +21,11 @@ REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": TRUSTED_PROXY_COUNT}  # noqa:
 DEMO_MODE = env.bool("DEMO_MODE", default=False)
 
 # Field encryption must have its own key in production: never derived from SECRET_KEY.
-if not env("FIELD_ENCRYPTION_KEY"):
+# Checked when the app runs, not while the Docker image is built (collectstatic has no secrets and encrypts nothing).
+import os  # noqa: E402
+
+BUILD_STEP = os.environ.get("DJANGO_BUILD_STEP") == "1"
+if not env("FIELD_ENCRYPTION_KEY") and not BUILD_STEP:
     from django.core.exceptions import ImproperlyConfigured
 
     raise ImproperlyConfigured(
