@@ -41,6 +41,7 @@ For NHF's ICT team and the penetration testers. Mapped to OWASP ASVS 4.0.3 Level
 | Role catalogue: global, process-specific, temporary roles with expiry | `apps/accounts/roles.py`, *Temporary roles* |
 | Application administrator separated from database administrator; neither sees member records | `ROLES`, `role_required` on every view |
 | Medical conditions shown only to roles that process eligibility | `CLINICAL_VIEW_ROLES` |
+| Centre scoping: counter roles list and work only their centre's applications and cards (read-only elsewhere unless assigned); island-wide roles see all; member records searchable island-wide with every view logged | `apps/accounts/scoping.py` |
 | Approver of an SRN cannot be its requester | `approve_srn` |
 | Server-side checks on every POST; no client-side-only rules | views |
 

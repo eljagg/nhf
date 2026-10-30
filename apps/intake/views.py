@@ -26,6 +26,9 @@ def queue(request):
         .select_related("assigned_to", "worked_by", "doctor", "member")
         .order_by("received_at")
     )
+    from apps.accounts.scoping import scope_by_centre
+
+    qs = scope_by_centre(qs, request.user)
     if request.GET.get("mine"):
         qs = qs.filter(assigned_to=request.user)
     rows = [{"a": a, "locked_by": a.worked_by_other(request.user)} for a in qs]

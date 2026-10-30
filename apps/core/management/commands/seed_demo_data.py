@@ -140,6 +140,10 @@ class Command(BaseCommand):
             return
         if opts["if_missing"] and TajIdentity.objects.exists():
             done = False
+            ho = Centre.objects.filter(code="HO").first()
+            if ho and get_user_model().objects.filter(username="sup.henry").exclude(centre=ho).update(centre=ho):  # v0.2.7: online unit at Head Office
+                self.stdout.write("demo: sup.henry moved to the Head Office online unit")
+                done = True
             if not CouncilRegisterEntry.objects.exists():  # upgrade from v0.2.1: add practitioners without a full reseed
                 with transaction.atomic():
                     self._practitioners(random.Random(1473))  # noqa: S311  # nosec B311
@@ -190,7 +194,7 @@ class Command(BaseCommand):
         spec = [
             ("cc.walker", "Tanya", "Walker", "HWT", ["customer_care"], False),
             ("cc.brown", "Kemar", "Brown", "MBJ", ["customer_care"], False),
-            ("sup.henry", "Claudette", "Henry", "HWT", ["supervisor", "customer_care"], False),
+            ("sup.henry", "Claudette", "Henry", "HO", ["supervisor", "customer_care"], False),  # online unit, Head Office
             ("mgr.morgan", "Desmond", "Morgan", "HO", ["manager", "srn_approver", "mcj_confirmer"], False),
             ("backoffice.lee", "Natalie", "Lee", "HO", ["back_office"], True),
             ("ictadmin.james", "Rohan", "James", "HO", ["ict_admin"], True),

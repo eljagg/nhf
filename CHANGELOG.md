@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.7 — 30 October 2026 — centre scoping, NIS format
+
+- **Centre scoping.** Customer Care, supervisors and print operators see and work their own centre's applications, online queue and print queue. They can open another centre's application read-only (a member may ask about it anywhere), but cannot change it unless a supervisor assigns it to them. Managers, auditors, the DPO, back-office, administrators, SRN approvers and council confirmers see every centre. Member records stay searchable island-wide because members are served at any centre; every view is in the access log. The print queue can no longer be widened with `?centre=all`. Daily expired-ID digests go to each supervisor for their own centre.
+- **NIS format** is now one letter followed by six digits (e.g. G721675). Deployments still on the old default are updated automatically; a format NHF has edited is left alone.
+- Demo: sup.henry is now the Head Office online-unit supervisor (online applications belong to Head Office).
+
 ## v0.2.6 — 30 October 2026 — sign-in fix, NIS for everyone, ID expiry tracking
 
 - **Fixed:** after two-step enrolment, *I have saved them — continue* did nothing (the link pointed at an internal route name instead of a page). It now goes to Home. Tested by clicking through as sup.henry, mgr.morgan, backoffice.lee and cc.walker.

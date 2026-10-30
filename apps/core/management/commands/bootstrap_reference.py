@@ -177,6 +177,7 @@ SECURITY_MEASURES = (
 OLD_DOCTOR_CATEGORIES = "Name, MCJ registration number, practice and contact details"
 # Parameter values that are still at a previous release's default are moved to the new default; edited values are left alone.
 OLD_PARAMETER_DEFAULTS = {
+    "nis-format-regex": [r"^([A-Z][0-9]{6}|[0-9]{9})$"],
     "privacy-notice-version": ["2026-10"],
     "privacy-notice-text": [
         "The National Health Fund collects your personal details and the medical conditions certified by your doctor to register you for "

@@ -145,3 +145,77 @@ def test_demo_identity_filler_gives_everyone_a_unique_valid_nis(agent, doctor, t
     nis = list(Member.objects.values_list("nis_number", flat=True))
     assert nis and all(is_valid_nis(n) for n in nis) and len(set(nis)) == len(nis)
     assert not Member.objects.filter(id_type="").exists()
+
+
+# --- v0.2.7: centre scoping -----------------------------------------------------------------------
+def _app_at(agent, run_commits, centre_code, trn="100200301"):
+    from datetime import date
+
+    from apps.core.models import Centre
+    from apps.members.models import Application
+
+    from .test_counter_journey import start
+
+    app = start(agent, run_commits, trn, "Marcia", "Campbell", date(1979, 3, 14))
+    Application.objects.filter(pk=app.pk).update(centre=Centre.objects.get(code=centre_code))
+    app.refresh_from_db()
+    return app
+
+
+def test_counter_staff_list_only_their_centre(client, agent, taj, run_commits):
+    mbj = _app_at(agent, run_commits, "MBJ")
+    hwt = _app_at(agent, run_commits, "HWT", trn="100200303")
+    assert client.login(username=agent.username, password=PASSWORD)
+    body = client.get("/members/applications/").content.decode()
+    assert hwt.tracking_number in body and mbj.tracking_number not in body
+
+
+def test_other_centre_application_is_read_only(client, agent, taj, run_commits):
+    mbj = _app_at(agent, run_commits, "MBJ")
+    assert client.login(username=agent.username, password=PASSWORD)
+    page = client.get(f"/members/applications/{mbj.tracking_number}/")
+    assert page.status_code == 200 and "belongs to" in page.content.decode() and not page.context["can_process"]
+    assert client.post(f"/members/applications/{mbj.tracking_number}/approve/").status_code == 403
+    mbj.refresh_from_db()
+    assert mbj.worked_by_id is None  # no work lock taken from another centre
+
+
+def test_assignment_lets_staff_work_another_centre(client, agent, manager, taj, run_commits):
+    from apps.members.models import Application
+
+    mbj = _app_at(agent, run_commits, "MBJ")
+    Application.objects.filter(pk=mbj.pk).update(assigned_to=agent)
+    assert client.login(username=agent.username, password=PASSWORD)
+    page = client.get(f"/members/applications/{mbj.tracking_number}/")
+    assert page.context["can_process"] and mbj.tracking_number in client.get("/members/applications/").content.decode()
+
+
+def test_managers_see_every_centre(client, agent, manager, taj, run_commits):
+    from .test_v023_security_fixes import login_verified
+
+    mbj = _app_at(agent, run_commits, "MBJ")
+    login_verified(client, manager)
+    assert mbj.tracking_number in client.get("/members/applications/").content.decode()
+
+
+def test_members_stay_searchable_island_wide(client, agent, doctor, taj, run_commits):
+    from apps.core.models import Centre
+    from apps.members.models import Member
+
+    m = _member(agent, doctor, run_commits)
+    Member.objects.filter(pk=m.pk).update(collection_centre=Centre.objects.get(code="MBJ"), registered_centre=Centre.objects.get(code="MBJ"))
+    assert client.login(username=agent.username, password=PASSWORD)
+    assert client.get(f"/members/{m.member_number}/").status_code == 200
+
+
+def test_print_queue_cannot_be_widened_by_centre_bound_staff(client, agent):
+    assert client.login(username=agent.username, password=PASSWORD)
+    resp = client.get("/cards/queue/?centre=all")
+    assert resp.status_code == 200
+    assert all(c.centre_id == agent.centre_id for c in resp.context["page"])
+
+
+def test_nis_default_is_letter_and_six_digits():
+    from apps.members.identifiers import is_valid_nis
+
+    assert is_valid_nis("G721675") and not is_valid_nis("123456789") and not is_valid_nis("G72167")

@@ -77,3 +77,7 @@ dashboards and saved reports (step 8) in A3.
 28. **Impact assessment**: *Impact assessments* → *Start the 2026 assessment* → edit → *Approve as DPO* → *Mark as submitted*.
 29. **Two-step can't be skipped**: sign in as a user who already has an authenticator and go straight to `/accounts/mfa/setup/`: you are sent to the code check.
 
+## v0.2.7 additions
+
+30. **Centre scoping**: as `cc.walker` (Half-Way-Tree), *Applications* lists only Half-Way-Tree work. Search a Montego Bay applicant by tracking number: the application opens with a blue "belongs to Montego Bay" note and no buttons. As `mgr.morgan`, the same list shows every centre with a centre filter.
+31. **Online unit**: as `sup.henry` (Head Office), *Online Intake* lists the online applications; assign one to `cc.walker`, who can then work it from Half-Way-Tree.

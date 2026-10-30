@@ -37,7 +37,8 @@ def approved_member(agent, doctor, run_commits, nis=""):
 
 # --- NIS ---------------------------------------------------------------------
 def test_nis_format_is_configurable():
-    assert is_valid_nis("B204517") and is_valid_nis("b 204-517") and is_valid_nis("123456789") and is_valid_nis("")
+    assert is_valid_nis("B204517") and is_valid_nis("b 204-517") and is_valid_nis("G721675") and is_valid_nis("")
+    assert not is_valid_nis("123456789")  # one letter + six digits only (NHF decision, 30 Oct 2026)
     assert not is_valid_nis("BB12345")
     Parameter.objects.update_or_create(key="nis-format-regex", defaults={"value": r"^[A-Z]{2}[0-9]{5}$"})
     assert is_valid_nis("BB12345") and not is_valid_nis("B204517")

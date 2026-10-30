@@ -107,7 +107,7 @@ domain is trusted automatically. Health check: `/healthz`.
 |---|---|---|
 | `cc.walker` | Customer Care, Half-Way-Tree | Counter journey |
 | `cc.brown` | Customer Care, Montego Bay | Second agent (work locks) |
-| `sup.henry` | Supervisor + Customer Care | Online queue assignment |
+| `sup.henry` | Supervisor + Customer Care, Head Office online unit | Online queue assignment |
 | `mgr.morgan` | Manager, SRN approver, council confirmer | SRN approval, MCJ and NCJ confirmations, council register import, staff and suspensions, temporary roles — MFA enrolment on first sign-in |
 | `backoffice.lee` | Back-office power user | Programmes, benefits, conditions (`/backoffice/`) |
 | `ictadmin.james` | Application administrator | Users, roles, staff profiles and ID, suspensions — MFA on first sign-in, no member access |

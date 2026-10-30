@@ -90,8 +90,8 @@ class Parameter(models.Model):
         "work-lock-seconds": (90, "A record is shown as being worked on while the agent's heartbeat is newer than this (OR10010)."),
         "counter-target-minutes": (15, "Target time from entry to dispatch at the counter (PF10001)."),
         "nis-format-regex": (
-            r"^([A-Z][0-9]{6}|[0-9]{9})$",
-            "Accepted NIS number format (regular expression). Default: one letter + six digits, or nine digits.",
+            r"^[A-Z][0-9]{6}$",
+            "Accepted NIS number format (regular expression). Default: one letter followed by six digits, e.g. G721675.",
         ),
         "privacy-notice-version": ("2026-11", "Version of the privacy notice applicants consent to (Data Protection Act 2020)."),
         "privacy-notice-text": (

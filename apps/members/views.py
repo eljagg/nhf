@@ -27,6 +27,18 @@ from .identifiers import normalise_nis
 from .models import SEVERITIES, Application, Member
 
 
+def _work_app(request, tracking):
+    """The application, if this user may change it (own centre, island-wide role, or assigned to them)."""
+    from django.core.exceptions import PermissionDenied
+
+    from apps.accounts.scoping import can_work_application
+
+    app = _app(tracking)
+    if not can_work_application(request.user, app):
+        raise PermissionDenied
+    return app
+
+
 def _app(tracking):
     return get_object_or_404(
         Application.objects.select_related(
@@ -131,6 +143,8 @@ def _condition_rows(app, data=None):
 
 
 def _context(request, app, form=None, condition_rows=None):
+    from apps.accounts.scoping import can_work_application
+
     outcome = services.evaluate(app)
     validation = app.trn_validation
     return {
@@ -142,7 +156,8 @@ def _context(request, app, form=None, condition_rows=None):
         "condition_rows": condition_rows or _condition_rows(app),
         "severities": SEVERITIES,
         "can_conditions": can_view_conditions(request.user),
-        "can_process": has_role(request.user, *PROCESS_ROLES) and app.is_open,
+        "can_process": has_role(request.user, *PROCESS_ROLES) and app.is_open and can_work_application(request.user, app),
+        "other_centre": not can_work_application(request.user, app),
         "reject_form": RejectForm(auto_id="rej_%s"),
         "recheck_form": RecheckForm(initial={"form_first_name": app.form_first_name, "form_last_name": app.form_last_name, "form_dob": app.form_dob}),
         "srn_form": SrnRequestForm(auto_id="srn_%s", initial={"first_name": app.form_first_name, "last_name": app.form_last_name, "dob": app.form_dob}),
@@ -156,12 +171,15 @@ def _context(request, app, form=None, condition_rows=None):
 @role_required(*MEMBER_ROLES)
 def application(request, tracking):
     """The counter page: identity, details, conditions, rules, decision, log."""
+    from apps.accounts.scoping import can_work_application
+
     app = _app(tracking)
-    if request.method == "GET" and app.is_open and has_role(request.user, *PROCESS_ROLES):
+    own = can_work_application(request.user, app)
+    if request.method == "GET" and app.is_open and has_role(request.user, *PROCESS_ROLES) and own:
         intake.take_work_lock(app, request.user)
         app.refresh_from_db(fields=["worked_by", "worked_heartbeat"])
     if request.method == "POST":
-        if not (has_role(request.user, *PROCESS_ROLES) and app.is_open):
+        if not (has_role(request.user, *PROCESS_ROLES) and app.is_open and own):
             return redirect("members:application", tracking=tracking)
         other = app.worked_by_other(request.user)
         if other:
@@ -214,7 +232,7 @@ def identity_panel(request, tracking):
 @role_required(*PROCESS_ROLES)
 def heartbeat(request, tracking):
     """OR10010: keep the 'being worked by' indicator alive while the page is open."""
-    app = get_object_or_404(Application, tracking_number=tracking)
+    app = _work_app(request, tracking)
     if app.is_open:
         intake.take_work_lock(app, request.user)
     return HttpResponse(status=204)
@@ -224,7 +242,7 @@ def heartbeat(request, tracking):
 @role_required(*PROCESS_ROLES)
 def recheck(request, tracking):
     """Correct the keyed form details and send the TRN again."""
-    app = _app(tracking)
+    app = _work_app(request, tracking)
     form = RecheckForm(request.POST)
     if form.is_valid() and app.is_open:
         app.form_first_name, app.form_last_name, app.form_dob = (
@@ -241,7 +259,7 @@ def recheck(request, tracking):
 @role_required(*PROCESS_ROLES)
 def revalidate(request, tracking):
     """Fresh TRN call (e.g. after a service outage, or the identity refresh on a change form)."""
-    app = _app(tracking)
+    app = _work_app(request, tracking)
     if app.is_open and app.trn and not app.is_srn:
         services.begin_identity_check(app, user=request.user)
     return redirect("members:application", tracking=tracking)
@@ -251,7 +269,7 @@ def revalidate(request, tracking):
 @role_required(*PROCESS_ROLES)
 def terminate(request, tracking):
     """TV10004/TV10005: terminate on identity mismatch."""
-    app = _app(tracking)
+    app = _work_app(request, tracking)
     try:
         services.terminate_for_mismatch(app, user=request.user, text=request.POST.get("text", ""))
         messages.success(request, f"{app.tracking_number} terminated: identity does not match the Tax Office record.")
@@ -264,7 +282,7 @@ def terminate(request, tracking):
 @role_required(*PROCESS_ROLES)
 def notify_invalid(request, tracking):
     """TV10006: SMS the applicant about an invalid TRN."""
-    app = _app(tracking)
+    app = _work_app(request, tracking)
     try:
         services.notify_invalid_trn(app, user=request.user)
         messages.success(request, f"SMS queued to {app.phone_mobile}.")
@@ -277,7 +295,7 @@ def notify_invalid(request, tracking):
 @role_required(*PROCESS_ROLES)
 def reject_invalid_trn(request, tracking):
     """Reject an application whose TRN the Tax Office does not know."""
-    app = _app(tracking)
+    app = _work_app(request, tracking)
     try:
         services.reject(app, user=request.user, reason=RejectionReason.objects.get(code="trn_invalid"), text="TRN not found at the Tax Office.")
     except services.ProcessingError as exc:
@@ -289,7 +307,7 @@ def reject_invalid_trn(request, tracking):
 @role_required(*PROCESS_ROLES)
 def request_srn(request, tracking):
     """Ask for an SRN from within an application whose TRN cannot be validated."""
-    app = _app(tracking)
+    app = _work_app(request, tracking)
     form = SrnRequestForm(request.POST)
     if form.is_valid() and app.is_open:
         d = form.cleaned_data
@@ -313,7 +331,7 @@ def request_srn(request, tracking):
 @role_required(*PROCESS_ROLES)
 def approve(request, tracking):
     """Approve (one transaction)."""
-    app = _app(tracking)
+    app = _work_app(request, tracking)
     try:
         app = services.approve(app.pk, user=request.user)
     except services.ProcessingError as exc:
@@ -333,7 +351,7 @@ def approve(request, tracking):
 @role_required(*PROCESS_ROLES)
 def reject(request, tracking):
     """Reject with a reason (MR10008, MR10009)."""
-    app = _app(tracking)
+    app = _work_app(request, tracking)
     form = RejectForm(request.POST)
     if form.is_valid():
         try:
@@ -352,7 +370,7 @@ def assign(request, tracking):
     """Supervisor assigns the application to an agent."""
     from django.contrib.auth import get_user_model
 
-    app = _app(tracking)
+    app = _work_app(request, tracking)
     user = get_user_model().objects.filter(pk=request.POST.get("user"), is_active=True).first()
     if user:
         intake.assign(app, to_user=user, by_user=request.user)
@@ -404,7 +422,9 @@ def member(request, member_number):
 @role_required(*MEMBER_ROLES)
 def applications(request):
     """Applications list with filters."""
-    qs = Application.objects.select_related("centre", "assigned_to", "worked_by", "member")
+    from apps.accounts.scoping import scope_by_centre, sees_all_centres
+
+    qs = scope_by_centre(Application.objects.select_related("centre", "assigned_to", "worked_by", "member"), request.user)
     status = request.GET.get("status", "open")
     if status == "open":
         qs = qs.filter(status__in=Application.OPEN_STATUSES)
@@ -427,6 +447,7 @@ def applications(request):
             "statuses": Application.STATUSES,
             "channels": Application.CHANNELS,
             "centres": Centre.objects.all(),
+            "all_centres": sees_all_centres(request.user),
             "page_title": "Applications",
         },
     )
@@ -513,7 +534,10 @@ def expired_ids(request):
     today = timezone.localdate()
     soon = today + timedelta(days=int(Parameter.get("id-expiry-warning-days")))
     which = request.GET.get("show", "expired")
-    qs = Member.objects.filter(id_expiry__isnull=False).order_by("id_expiry")
+    from apps.accounts.scoping import scope_by_centre
+
+    base = scope_by_centre(Member.objects.all(), request.user, field="collection_centre")
+    qs = base.filter(id_expiry__isnull=False).order_by("id_expiry")
     qs = qs.filter(id_expiry__lt=today) if which == "expired" else qs.filter(id_expiry__gte=today, id_expiry__lte=soon)
     page = Paginator(qs, 50).get_page(request.GET.get("page"))
     return render(
@@ -525,8 +549,8 @@ def expired_ids(request):
             "today": today,
             "soon": soon,
             "counts": {
-                "expired": Member.objects.filter(id_expiry__lt=today).count(),
-                "soon": Member.objects.filter(id_expiry__gte=today, id_expiry__lte=soon).count(),
+                "expired": base.filter(id_expiry__lt=today).count(),
+                "soon": base.filter(id_expiry__gte=today, id_expiry__lte=soon).count(),
             },
             "page_title": "Expired IDs",
         },

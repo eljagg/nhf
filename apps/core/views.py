@@ -34,7 +34,9 @@ def home(request):
     today = timezone.localdate()
     start = timezone.make_aware(timezone.datetime.combine(today, timezone.datetime.min.time()))
     open_apps = Application.objects.filter(status__in=Application.OPEN_STATUSES)
-    centre_apps = open_apps.filter(centre=user.centre) if user.centre_id and not has_role(user, "manager") else open_apps
+    from apps.accounts.scoping import scope_by_centre
+
+    centre_apps = scope_by_centre(open_apps, user)
     stats = {
         "members": Member.objects.filter(status="active").count(),
         "today_received": Application.objects.filter(received_at__gte=start).count(),

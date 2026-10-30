@@ -3,7 +3,7 @@
 from django.core.paginator import Paginator
 from django.shortcuts import render
 
-from apps.accounts.roles import has_role, role_required
+from apps.accounts.roles import role_required
 
 from .models import Card
 
@@ -12,8 +12,11 @@ from .models import Card
 def queue(request):
     """CP10003: only cards flagged for printing; the centre's queue by default."""
     qs = Card.objects.filter(state="queued").select_related("member", "centre")
-    centre = request.GET.get("centre")
-    if centre != "all" and request.user.centre_id and not has_role(request.user, "manager"):
-        qs = qs.filter(centre=request.user.centre)
+    from apps.accounts.scoping import sees_all_centres
+
+    if not sees_all_centres(request.user):
+        qs = qs.filter(centre=request.user.centre)  # centre-bound staff print their own centre's cards only
+    elif request.GET.get("centre") and request.GET["centre"] != "all":
+        qs = qs.filter(centre_id=request.GET["centre"])
     page = Paginator(qs.order_by("queued_at"), 50).get_page(request.GET.get("page"))
     return render(request, "cards/queue.html", {"page": page, "page_title": "Print queue"})

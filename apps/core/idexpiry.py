@@ -46,10 +46,17 @@ def check_id_expiry():
             days=Parameter.get("id-expiry-warning-days"),
             names=names,
         )
+    from apps.accounts.roles import users_with_role
+    from apps.accounts.scoping import scope_by_centre
     from apps.members.models import Member
 
     expired = Member.objects.filter(id_expiry__lt=today).count()
     soon = Member.objects.filter(id_expiry__gte=today, id_expiry__lte=warn).count()
-    if (expired or soon) and not Notification.objects.filter(template="member-ids-digest", created_at__date=today).exists():
-        notify_role("supervisor", "member-ids-digest", link="/members/expired-ids/", expired=expired, soon=soon)
+    for sup in users_with_role("supervisor"):  # each supervisor hears about their own centre's members
+        if Notification.objects.filter(template="member-ids-digest", recipient_user=sup, created_at__date=today).exists():
+            continue
+        mine = scope_by_centre(Member.objects.all(), sup, field="collection_centre")
+        e, s = mine.filter(id_expiry__lt=today).count(), mine.filter(id_expiry__gte=today, id_expiry__lte=warn).count()
+        if e or s:
+            queue("member-ids-digest", "inapp", sup.get_username(), recipient_user=sup, link="/members/expired-ids/", expired=e, soon=s)
     return {"staff_told": told, "staff_due": len(staff), "members_expired": expired, "members_expiring": soon}

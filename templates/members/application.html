@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+{% if other_centre %}<div class="finding-info mb-3" role="status">This application belongs to <strong>{{ app.centre }}</strong>. You can see its status, but only staff at that centre, or someone a supervisor assigns it to, can work on it.</div>{% endif %}
 <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
   <div>
     <div class="flex flex-wrap items-center gap-2">
