@@ -33,8 +33,11 @@
       {% empty %}<p class="text-sm text-slate-500">None. Accounts lock after repeated failed attempts for 15 minutes.</p>{% endfor %}
     </div></div>
     <div class="card"><div class="card-h"><h2>Two-step sign-in coverage</h2></div><div class="card-b space-y-2">
+      <div class="flex justify-between text-sm font-semibold"><span>All staff</span><span>{% if mfa_all.holders == mfa_all.enrolled %}<span class="b-green">{{ mfa_all.enrolled }}/{{ mfa_all.holders }} enrolled</span>{% else %}<span class="b-amber">{{ mfa_all.enrolled }}/{{ mfa_all.holders }} enrolled</span>{% endif %}</span></div>
+      {% if mfa_all.missing %}<p class="text-xs text-slate-500">Not yet enrolled (asked at next sign-in): {% for u in mfa_all.missing %}{{ u.username }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+      <div class="border-t border-slate-100 pt-2"></div>
       {% for r in mfa_rows %}<div class="flex justify-between text-sm"><span>{{ r.role }}</span><span>{% if r.holders == r.enrolled %}<span class="b-green">{{ r.enrolled }}/{{ r.holders }} enrolled</span>{% else %}<span class="b-amber">{{ r.enrolled }}/{{ r.holders }} enrolled</span>{% endif %}</span></div>{% endfor %}
-      <p class="text-xs text-slate-500">These roles cannot use the system until they enrol an authenticator.</p>
+      <p class="text-xs text-slate-500">Every staff account must enrol an authenticator before using the system; the roles above can never be exempted.</p>
     </div></div>
     <div class="card"><div class="card-h"><h2>Password age</h2><span class="text-xs text-slate-500">{% if max_age %}expire after {{ max_age }} days{% else %}expiry off{% endif %}</span></div><div class="card-b text-sm space-y-1">
       {% for u in expired %}<div class="flex justify-between"><span>{{ u.username }}</span><span class="b-red">expired</span></div>{% endfor %}

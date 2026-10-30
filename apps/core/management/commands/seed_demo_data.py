@@ -14,6 +14,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 from django.utils import timezone
+from django_otp.plugins.otp_static.models import StaticDevice
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from apps.cards.models import Card, clean_card_name
@@ -150,6 +151,7 @@ class Command(BaseCommand):
             user.save()
             user.groups.set(Group.objects.filter(name__in=roles))
             TOTPDevice.objects.filter(user=user).delete()  # a reseed starts the MFA enrolment demo again
+            StaticDevice.objects.filter(user=user).delete()
             users[username] = user
         return users
 

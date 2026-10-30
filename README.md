@@ -65,6 +65,27 @@ One service from this repository plus a PostgreSQL database. Variables:
 | `CELERY_TASK_ALWAYS_EAGER` | `1` when Redis is attached but no worker service runs |
 | `PRODUCT_NAME` | name shown on screens (default `Registry Platform`) |
 | `BUILT_BY` | optional credit on the sign-in footer, e.g. `AiShiftCode` (blank shows nothing) |
+| `MFA_REQUIRED` | `1` (default) — two-step sign-in for every staff account |
+| `MFA_DEMO_PRIVILEGED_ONLY` | `1` lets counter roles skip two-step sign-in while `DEMO_MODE=1` (managers, administrators and the DPO still need it) |
+
+### Active Directory and Entra ID (optional)
+
+| Variable | Value |
+|---|---|
+| `LDAP_ENABLED` | `1` to allow AD sign-in |
+| `LDAP_SERVER_URI` | `ldaps://dc01.nhf.gov.jm:636` — or `mock://demo` for the built-in demonstration directory |
+| `LDAP_BIND_DN` / `LDAP_BIND_PASSWORD` | read-only service account (not needed for `mock://demo`) |
+| `LDAP_USER_SEARCH_BASE` | e.g. `OU=Staff,DC=nhf,DC=gov,DC=jm` |
+| `LDAP_GROUP_SEARCH_BASE` | where the NHF-MRS-* groups live (defaults to the user search base) |
+| `LDAP_USER_FILTER` | default `(&(objectClass=user)(sAMAccountName={username}))` |
+| `LDAP_NESTED_GROUPS` | `1` (default) resolves nested group membership |
+| `LDAP_CA_CERT_FILE` | path to NHF's internal CA certificate if the domain controllers use it |
+| `OIDC_ENABLED` | `1` to show *Sign in with Microsoft* |
+| `OIDC_TENANT_ID`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | from the Entra ID app registration; redirect URI `https://<host>/accounts/oidc/callback/`; enable the *groups* claim |
+| `OIDC_BUTTON_LABEL` | button text (default `Sign in with Microsoft`) |
+
+Group mappings (AD group → role and/or centre) are in `/backoffice/` → *Group mappings*; suggested names
+`NHF-MRS-CustomerCare`, `NHF-MRS-Supervisors`, `NHF-MRS-Managers`, `NHF-Centre-HWT`, … are loaded on first start.
 
 The entrypoint migrates, loads roles and reference data, seeds the demo set, then starts Gunicorn. Railway's public
 domain is trusted automatically. Health check: `/healthz`.
@@ -82,5 +103,11 @@ domain is trusted automatically. Health check: `/healthz`.
 | `auditor.shaw` | Auditor | Read-only, conditions masked, audit trail |
 | `print.reid` | Card print operator | Print queue |
 | `dpo.grant` | Data Protection Officer | Requests from members, breach register, processing register, retention — MFA on first sign-in |
+
+Every user enrols an authenticator app (Microsoft or Google Authenticator) at first sign-in and is given ten backup codes.
+
+With `LDAP_ENABLED=1` and `LDAP_SERVER_URI=mock://demo` the demonstration directory adds `ad.campbell`, `ad.richards`
+(Customer Care), `ad.henry` (Supervisor), `ad.auditor` (Auditor), `ad.nogroup` (refused — no mapped group) and
+`ad.disabled` (refused — disabled), all with the demo password.
 
 Demonstration cases are in `docs/demo-script.md`.

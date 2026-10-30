@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div><h1>Directory sign-in</h1><p class="text-sm text-slate-500">Active Directory (LDAPS) and Microsoft Entra ID single sign-on. Roles come from directory groups and are refreshed at every sign-in and nightly.</p></div>
+  <a class="btn-secondary" href="/backoffice/directory/groupmapping/">Edit group mappings</a>
+</div>
+<div class="grid xl:grid-cols-2 gap-5">
+  <div class="card"><div class="card-h"><h2>Active Directory</h2>{% if ldap.ENABLED %}{% if ldap_mock %}<span class="b-amber">Demonstration directory</span>{% else %}<span class="b-green">Enabled</span>{% endif %}{% else %}<span class="b-grey">Off</span>{% endif %}</div>
+    <div class="card-b space-y-3">
+      <dl class="kv"><dt>Server</dt><dd class="font-mono text-xs break-all">{{ ldap.SERVER_URI|default:"—" }}</dd><dt>Service account</dt><dd class="font-mono text-xs break-all">{{ ldap.BIND_DN|default:"—" }} {% if bind_password_set %}<span class="b-green">password set</span>{% endif %}</dd><dt>User search base</dt><dd class="font-mono text-xs break-all">{{ ldap.USER_SEARCH_BASE|default:"—" }}</dd><dt>User filter</dt><dd class="font-mono text-xs break-all">{{ ldap.USER_FILTER }}</dd><dt>Nested groups</dt><dd>{{ ldap.NESTED_GROUPS|yesno:"yes,no" }}</dd><dt>CA certificate</dt><dd class="font-mono text-xs">{{ ldap.CA_CERT_FILE|default:"system store" }}</dd></dl>
+      {% if ldap.ENABLED %}<form class="flex flex-wrap gap-2 items-end"><input type="hidden" name="test" value="1"><div><label class="lbl" for="sample">Look up a user (optional)</label><input id="sample" class="inp w-56" name="sample" value="{{ sample }}" placeholder="sAMAccountName"></div><button class="btn-primary">Test connection</button></form>{% endif %}
+      {% if steps %}<ul class="space-y-1">{% for name, ok, detail in steps %}<li class="{% if ok %}finding-info{% else %}finding-error{% endif %}"><span class="font-semibold">{{ name }}</span> <span class="text-xs break-all">{{ detail }}</span></li>{% endfor %}</ul>{% endif %}
+      {% if ldap_mock %}<p class="text-xs text-slate-500">Demonstration directory users: ad.campbell, ad.richards (Customer Care), ad.henry (Supervisor), ad.auditor (Auditor), ad.nogroup (no access), ad.disabled (disabled) — password is the demo password.</p>{% endif %}
+    </div></div>
+  <div class="card"><div class="card-h"><h2>Microsoft Entra ID</h2>{% if oidc.ENABLED %}<span class="b-green">Enabled</span>{% else %}<span class="b-grey">Off</span>{% endif %}</div>
+    <div class="card-b"><dl class="kv"><dt>Authority</dt><dd class="font-mono text-xs break-all">{{ oidc.AUTHORITY|default:"—" }}</dd><dt>Client id</dt><dd class="font-mono text-xs">{{ oidc.CLIENT_ID|default:"—" }} {% if oidc_secret_set %}<span class="b-green">secret set</span>{% endif %}</dd><dt>Groups claim</dt><dd class="font-mono text-xs">{{ oidc.GROUPS_CLAIM }}</dd><dt>Redirect URI</dt><dd class="font-mono text-xs break-all">{{ request.scheme }}://{{ request.get_host }}{% url 'oidc:callback' %}</dd></dl>
+    <p class="text-xs text-slate-500 mt-3">If Microsoft confirms it performed MFA at sign-in, the system's own two-step prompt is skipped for that session.</p></div></div>
+  <div class="card"><div class="card-h"><h2>Group mappings</h2></div><table class="tbl"><thead><tr><th>Group</th><th>Source</th><th>Role</th><th>Centre</th></tr></thead><tbody>
+    {% for m in mappings %}<tr><td class="font-mono text-xs">{{ m.group }}</td><td class="whitespace-nowrap">{% if m.source == "ad" %}AD{% else %}Entra ID{% endif %}</td><td>{{ m.get_role_display|default:"—" }}</td><td>{{ m.centre|default:"—" }}</td></tr>{% empty %}<tr><td colspan="4" class="text-slate-500">No mappings.</td></tr>{% endfor %}</tbody></table></div>
+  <div class="card"><div class="card-h"><h2>Accounts from the directory</h2><span class="text-xs text-slate-500">local administrators: {% for u in local_admins %}{{ u.username }}{% if not forloop.last %}, {% endif %}{% empty %}none{% endfor %}</span></div><table class="tbl"><thead><tr><th>Username</th><th>Source</th><th>Active</th><th>Last synced</th></tr></thead><tbody>
+    {% for u in dir_users %}<tr><td><a href="{% url 'security:activity' %}?user={{ u.pk }}">{{ u.username }}</a></td><td>{{ u.get_source_display }}</td><td>{% if u.is_active %}<span class="b-green">yes</span>{% else %}<span class="b-red">disabled</span>{% endif %}</td><td>{{ u.directory_synced_at|date:"j M Y H:i"|default:"—" }}</td></tr>{% empty %}<tr><td colspan="4" class="text-slate-500">Nobody has signed in through the directory yet.</td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endblock %}

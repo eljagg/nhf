@@ -52,3 +52,10 @@ dashboards and saved reports (step 8) in A3.
 12. **User activity** — as `auditor.shaw`: *User activity* → `cc.walker` → every page and event of the session, then *Export CSV*.
 13. **Security** — sign in five times with a wrong password for `cc.brown`: a high alert appears on *Security* and in managers' inboxes; the account shows under *Locked accounts* with *Unlock* (application administrator).
 14. **Data protection** — as `dpo.grant`: *Privacy dashboard* → the open access request from Andre Lewis → *Download copy of the member's data*; the release appears on his interaction log. *Breach register* shows the hours left to report to the Information Commissioner.
+
+## v0.2.1 additions
+
+15. **Two-step for everyone** — sign in as `cc.walker`: scan the QR code, enter the code, and the ten backup codes appear once. Sign out and back in: the code is asked for. Enter one backup code instead: it works once and you are told how many are left.
+16. **Lost phone** — as `ictadmin.james`: *User activity* → `cc.walker` → *Reset two-step sign-in* with a reason. `cc.walker` is signed out and enrols again; *Security* shows the alert. Try it on your own account: refused.
+17. **Active Directory** (`LDAP_ENABLED=1`, `LDAP_SERVER_URI=mock://demo`) — sign in as `ad.campbell` with the demo password: an account is created as Customer Care at Half-Way-Tree from her AD groups. `ad.nogroup` is told they are not in a group that gives access; `ad.disabled` is told the account is disabled.
+18. **Directory page** — as `ictadmin.james`: *Directory sign-in* → look up `ad.henry` → *Test connection* shows the bind, his groups and that he is enabled; *Edit group mappings* changes which group gives which role.

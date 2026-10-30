@@ -1,0 +1,9 @@
+{% extends "accounts/_shell.html" %}
+{% block title %}Backup codes{% endblock %}
+{% block box %}
+<h1 class="text-white text-2xl">Your backup codes</h1>
+<p class="text-sm text-white/80 mt-2">Each code works once, in place of the authenticator code, if your phone is not with you. Write them down or print this page and keep them somewhere safe. They will not be shown again.</p>
+<ol class="grid grid-cols-2 gap-2 my-5 font-mono text-lg text-white" id="backup-codes">{% for c in codes %}<li class="glass-chip justify-center tracking-widest">{{ c }}</li>{% endfor %}</ol>
+<a class="glass-btn w-full" href="{{ next }}">I have saved them — continue</a>
+<p class="text-xs text-white/70 mt-4">Lost your phone and your codes? Ask an application administrator to reset your two-step sign-in.</p>
+{% endblock %}

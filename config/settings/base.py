@@ -34,7 +34,26 @@ env = environ.Env(
     TRN_TIMEOUT_SECONDS=(int, 10),
     PORTAL_SHARED_SECRET=(str, ""),
     FIELD_ENCRYPTION_KEY=(str, ""),
-    MFA_REQUIRED=(bool, False),
+    MFA_REQUIRED=(bool, True),
+    MFA_DEMO_PRIVILEGED_ONLY=(bool, False),
+    LDAP_ENABLED=(bool, False),
+    LDAP_SERVER_URI=(str, ""),
+    LDAP_BIND_DN=(str, ""),
+    LDAP_BIND_PASSWORD=(str, ""),
+    LDAP_USER_SEARCH_BASE=(str, ""),
+    LDAP_USER_FILTER=(str, "(&(objectClass=user)(sAMAccountName={username}))"),
+    LDAP_GROUP_SEARCH_BASE=(str, ""),
+    LDAP_NESTED_GROUPS=(bool, True),
+    LDAP_CA_CERT_FILE=(str, ""),
+    LDAP_TIMEOUT=(int, 5),
+    LDAP_ALLOW_PLAIN=(bool, False),
+    OIDC_ENABLED=(bool, False),
+    OIDC_TENANT_ID=(str, ""),
+    OIDC_CLIENT_ID=(str, ""),
+    OIDC_CLIENT_SECRET=(str, ""),
+    OIDC_AUTHORITY=(str, ""),
+    OIDC_GROUPS_CLAIM=(str, "groups"),
+    OIDC_BUTTON_LABEL=(str, "Sign in with Microsoft"),
 )
 environ.Env.read_env(BASE_DIR / ".env")
 
@@ -55,7 +74,7 @@ PRODUCT_NAME = env("PRODUCT_NAME", default="Registry Platform")
 BUILT_BY = env("BUILT_BY", default="")
 EDITION_NAME = "Member Registration"
 CLIENT_NAME = "National Health Fund"
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -74,6 +93,7 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "django_otp",
     "django_otp.plugins.otp_totp",
+    "django_otp.plugins.otp_static",
     "axes",
     "csp",
 ]
@@ -90,6 +110,7 @@ LOCAL_APPS = [
     "apps.api",
     "apps.security",
     "apps.privacy",
+    "apps.directory",
 ]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -176,6 +197,7 @@ CELERY_BEAT_SCHEDULE = {
     "jadep-at-60-sweep": {"task": "apps.members.tasks.jadep_sweep", "schedule": timedelta(hours=24)},
     "expire-temporary-roles": {"task": "apps.accounts.tasks.expire_temporary_roles", "schedule": timedelta(minutes=15)},
     "retention-sweep": {"task": "apps.privacy.tasks.retention_sweep", "schedule": timedelta(hours=24)},
+    "directory-sync": {"task": "apps.directory.tasks.sync_directory_users", "schedule": timedelta(hours=24)},
 }
 
 # ----------------------------------------------------------------------------
@@ -184,7 +206,8 @@ CELERY_BEAT_SCHEDULE = {
 AUTH_USER_MODEL = "accounts.User"
 AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesStandaloneBackend",
-    "django.contrib.auth.backends.ModelBackend",
+    "apps.directory.backends.ActiveDirectoryBackend",  # no-op unless LDAP_ENABLED
+    "django.contrib.auth.backends.ModelBackend",  # local accounts (break-glass administrators, demo users)
 ]
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:home"
@@ -203,8 +226,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "apps.accounts.validators.ComplexityValidator"},
     {"NAME": "apps.accounts.validators.PasswordHistoryValidator"},
 ]
-# Roles whose members must use TOTP (UM10004). MFA_REQUIRED=1 enforces it for every staff user.
+# Two-step sign-in (UM10004). On by default for every staff account: anyone who can open member records handles personal and
+# health data under the Data Protection Act. MFA_REQUIRED_ROLES always need it, whatever the settings below say.
 MFA_REQUIRED = env("MFA_REQUIRED")
+# Demonstration convenience only: with DEMO_MODE on, MFA_DEMO_PRIVILEGED_ONLY=1 limits it to MFA_REQUIRED_ROLES. Ignored when DEMO_MODE is off.
+MFA_DEMO_PRIVILEGED_ONLY = env("MFA_DEMO_PRIVILEGED_ONLY")
 MFA_REQUIRED_ROLES = ["manager", "ict_admin", "db_admin", "dpo"]
 
 AXES_FAILURE_LIMIT = env("AXES_FAILURE_LIMIT")
@@ -296,6 +322,30 @@ TRN_SOAP = {
     "TIMEOUT": env("TRN_TIMEOUT_SECONDS"),
 }
 PORTAL_SHARED_SECRET = env("PORTAL_SHARED_SECRET")
+
+# Directory sign-in (UM10005 Active Directory over LDAPS; UM10006 Entra ID single sign-on). Secrets only from the environment.
+LDAP = {
+    "ENABLED": env("LDAP_ENABLED"),
+    "SERVER_URI": env("LDAP_SERVER_URI"),  # ldaps://dc1.nhf.local:636 ; "mock://demo" = built-in demonstration directory
+    "BIND_DN": env("LDAP_BIND_DN"),
+    "BIND_PASSWORD": env("LDAP_BIND_PASSWORD"),
+    "USER_SEARCH_BASE": env("LDAP_USER_SEARCH_BASE"),
+    "USER_FILTER": env("LDAP_USER_FILTER"),
+    "GROUP_SEARCH_BASE": env("LDAP_GROUP_SEARCH_BASE"),
+    "NESTED_GROUPS": env("LDAP_NESTED_GROUPS"),
+    "CA_CERT_FILE": env("LDAP_CA_CERT_FILE"),
+    "TIMEOUT": env("LDAP_TIMEOUT"),
+    "ALLOW_PLAIN": env("LDAP_ALLOW_PLAIN"),
+}
+OIDC = {
+    "ENABLED": env("OIDC_ENABLED"),
+    "TENANT_ID": env("OIDC_TENANT_ID"),
+    "CLIENT_ID": env("OIDC_CLIENT_ID"),
+    "CLIENT_SECRET": env("OIDC_CLIENT_SECRET"),
+    "AUTHORITY": env("OIDC_AUTHORITY") or (f"https://login.microsoftonline.com/{env('OIDC_TENANT_ID')}/v2.0" if env("OIDC_TENANT_ID") else ""),
+    "GROUPS_CLAIM": env("OIDC_GROUPS_CLAIM"),
+    "BUTTON_LABEL": env("OIDC_BUTTON_LABEL"),
+}
 
 LANGUAGE_CODE = "en-gb"
 TIME_ZONE = "America/Jamaica"

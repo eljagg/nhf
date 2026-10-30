@@ -10,4 +10,5 @@ urlpatterns = [
     path("activity/", views.activity, name="activity"),
     path("activity/export.csv", views.activity_csv, name="activity-csv"),
     path("users/<int:user_id>/end-sessions/", views.end_user_sessions, name="end-sessions"),
+    path("users/<int:user_id>/reset-mfa/", views.reset_mfa, name="reset-mfa"),
 ]

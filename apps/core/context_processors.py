@@ -102,6 +102,7 @@ def site(request):
             [
                 _item("Security", "security:dashboard", request, ("ict_admin", "manager", "auditor"), alerts_open),
                 _item("User activity", "security:activity", request, ("ict_admin", "manager", "auditor")),
+                _item("Directory sign-in", "directory:status", request, ("ict_admin", "manager", "auditor")),
                 _item("Audit trail", "core:audit", request, ("auditor", "manager", "ict_admin")),
                 _item("Integration Hub log", "core:integrations", request, ("ict_admin", "manager", "auditor")),
                 _item("Temporary roles", "accounts:temporary-roles", request, ("manager", "ict_admin")),

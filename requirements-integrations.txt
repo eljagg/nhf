@@ -1,4 +1,2 @@
 # Phase B adapters, installed on NHF's servers once the interface specifications are confirmed
 zeep>=4.3               # TRN Validation Web Service (SOAP, via the ICT Authority)
-django-auth-ldap>=5.1   # Active Directory sign-in over LDAPS (UM10005)
-mozilla-django-oidc>=4.0  # OIDC / Entra ID single sign-on (UM10006)

@@ -1,4 +1,4 @@
-# Security controls — v0.2.0
+# Security controls — v0.2.1
 
 For NHF's ICT team and the penetration testers. Mapped to OWASP ASVS 4.0.3 Level 2 chapters and to the tender rows
 (UM, DM, AL, CS). Each control names where it lives so it can be checked in code or on screen.
@@ -12,11 +12,17 @@ For NHF's ICT team and the penetration testers. Mapped to OWASP ASVS 4.0.3 Level
 | No reuse of the last N passwords (parameter `password-history-count`, default 5) | `PasswordHistory`, `PasswordHistoryValidator` |
 | Expiry after N days (parameter `password-max-age-days`, default 90; 0 turns it off) | `PasswordExpiryMiddleware` |
 | Self-service reset by e-mailed single-use link (3-day expiry), max 5 requests per hour per address, response does not reveal whether the e-mail exists | `ThrottledPasswordResetView` |
-| TOTP two-step sign-in, compulsory for manager, application administrator, database administrator and DPO roles (or all staff with `MFA_REQUIRED=1`) | `MFAEnforcementMiddleware` |
+| TOTP two-step sign-in compulsory for **every** staff account (`MFA_REQUIRED`, default on). Manager, application administrator, database administrator and DPO can never be exempted. `MFA_DEMO_PRIVILEGED_ONLY=1` relaxes it for other roles only while `DEMO_MODE=1`; it is ignored in production | `MFAEnforcementMiddleware`, `mfa_required_for` |
+| Ten single-use backup codes issued at enrolment, shown once; used codes are consumed; users regenerate them from *My account* | `issue_backup_codes`, django-otp static devices |
+| Lost authenticator: an application administrator resets another user's two-step sign-in (never their own); devices and backup codes deleted, sessions ended, audit entry and a security alert | `security:reset-mfa` |
+| Repeated wrong two-step codes (parameter `alert-failed-mfa`, default 5 in 15 minutes) raise a high alert — the password may be known to someone else | `_count_mfa_failure` |
 | Before the second factor is verified only sign-in, sign-out, MFA and password-reset pages are reachable | `OPEN_PATHS` in `apps/accounts/middleware.py` |
 | Lockout after 5 failures for 15 minutes (per username — shared counter PCs are not locked); administrator unlock on the Security page | django-axes, `security:unlock` |
 | Administrator temporary lock of an account | `User.locked_until` |
-| AD (LDAPS) and Entra ID (OIDC) sign-in | Phase B, `requirements-integrations.txt` |
+| Active Directory sign-in over LDAPS (UM10005): service-account bind, user found by sAMAccountName, password checked by binding as the user (never stored locally), disabled AD accounts refused, nested groups via the AD in-chain rule, LDAP filters escaped, certificate required, plain `ldap://` refused unless `LDAP_ALLOW_PLAIN=1` (lab only) | `apps/directory/ldap.py`, `ActiveDirectoryBackend` |
+| Roles and centre come from AD group mappings, refreshed at every sign-in; nobody in a mapped group → no account; directory accounts have no local password; a local account is never taken over by a matching directory name; nightly sync disables accounts removed, disabled or unmapped in AD and ends their sessions | `apps/directory/provisioning.py`, `sync_ad_users` |
+| Local break-glass administrator still signs in if the directory is down | `ActiveDirectoryBackend` skips local accounts with a password |
+| Microsoft Entra ID single sign-on (UM10006): OpenID Connect authorisation code with PKCE, state and nonce; ID token signature checked against Entra's published keys, plus issuer, audience and expiry. When Entra reports MFA (`amr` contains `mfa`) our prompt is skipped for that session; otherwise our TOTP is still required | `apps/directory/oidc.py` |
 
 ## 2. Sessions (ASVS V3)
 

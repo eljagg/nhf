@@ -14,6 +14,14 @@ class User(AbstractUser):
     locked_until = models.DateTimeField(null=True, blank=True, help_text="Temporary lock set by an administrator (UM10011).")
     lock_reason = models.CharField(max_length=200, blank=True)
     password_changed_at = models.DateTimeField(default=timezone.now, help_text="Drives password expiry.")
+    source = models.CharField(
+        max_length=8,
+        choices=[("local", "Local account"), ("ad", "Active Directory"), ("entra", "Entra ID")],
+        default="local",
+        help_text="Where the account and its roles come from.",
+    )
+    external_id = models.CharField(max_length=120, blank=True, db_index=True, help_text="Directory object id (AD objectGUID / Entra oid).")
+    directory_synced_at = models.DateTimeField(null=True, blank=True)
 
     def set_password(self, raw_password):
         """Record when the password changed; the new hash is added to the password history on save."""

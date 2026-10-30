@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.2.1 — 29 October 2026 — two-step sign-in for all staff, Active Directory, Entra ID
+
+- **Two-step sign-in is now compulsory for every staff account** (Data Protection Act safeguard). Enrolment issues ten single-use backup codes, shown once; *My account* shows how many are left and generates new ones. Using a backup code warns how many remain.
+- **Lost phone**: an application administrator can reset another user's two-step sign-in from *User activity* (never their own). Their authenticator and codes are removed, sessions ended, and the reset is audited and raised as a security alert. Repeated wrong codes also raise an alert. The *Security* dashboard shows two-step coverage across all staff.
+- **Active Directory connector** (LDAPS): staff sign in with their NHF network username and password. Accounts are created on first sign-in; roles and centre come from AD group mappings (edited in the back office) and are refreshed at every sign-in and nightly. Disabled, removed or unmapped AD accounts are refused and disabled here. Local administrator accounts keep working if the directory is down. A built-in demonstration directory (`LDAP_SERVER_URI=mock://demo`) shows the whole flow without NHF's servers.
+- **Microsoft Entra ID single sign-on** (optional): a *Sign in with Microsoft* button. If Microsoft already performed MFA, the system does not ask again.
+- New *Directory sign-in* page (application administrator, manager, auditor): configuration without secrets, connection test, group mappings, directory accounts.
+- `MFA_DEMO_PRIVILEGED_ONLY=1` lets counter roles skip two-step sign-in **in demo mode only**.
+
 ## v0.2.0 — 29 October 2026 — NIS, user tracking, security, Data Protection Act
 
 - **NIS number** on members, applications and change forms; accepted format is a back-office parameter (default one letter + six digits, or nine digits); duplicates blocked; searchable in tracking search; in the API and the access-request export; editable on the profile without an application.

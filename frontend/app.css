@@ -249,3 +249,14 @@ html.dark nav .badge.bg-amber-400 { color: #1a1300; }
 .theme-toggle .icon-sun { display: none; }
 html.dark .theme-toggle .icon-sun { display: inline; }
 html.dark .theme-toggle .icon-moon { display: none; }
+
+/* Microsoft sign-in button (Entra ID) */
+@layer components {
+  .glass-btn-ms { @apply inline-flex items-center justify-center gap-3 rounded-lg px-4 py-2.5 font-semibold no-underline cursor-pointer transition;
+    background: #fff; color: #1f1f1f; border: 1px solid rgba(255,255,255,.6); }
+  .glass-btn-ms:hover { background: #f3f3f3; }
+  .ms-logo { display: inline-grid; grid-template-columns: 9px 9px; gap: 2px; }
+  .ms-logo i { width: 9px; height: 9px; display: block; }
+  .ms-logo i:nth-child(1) { background: #f25022; } .ms-logo i:nth-child(2) { background: #7fba00; }
+  .ms-logo i:nth-child(3) { background: #00a4ef; } .ms-logo i:nth-child(4) { background: #ffb900; }
+}

@@ -17,3 +17,6 @@ gunicorn>=23.0
 argon2-cffi>=23.1
 cryptography>=44
 python-dateutil>=2.9
+requests>=2.32
+ldap3>=2.9
+PyJWT[crypto]>=2.9

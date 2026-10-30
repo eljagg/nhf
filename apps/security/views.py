@@ -34,6 +34,9 @@ def dashboard(request):
     limit = settings.AXES_FAILURE_LIMIT
     locked = AccessAttempt.objects.filter(failures_since_start__gte=limit, attempt_time__gte=now - settings.AXES_COOLOFF_TIME).order_by("-attempt_time")
     user_model = get_user_model()
+    staff = user_model.objects.filter(is_active=True)
+    enrolled_ids = set(TOTPDevice.objects.filter(confirmed=True, user__is_active=True).values_list("user_id", flat=True))
+    mfa_all = {"holders": staff.count(), "enrolled": len(enrolled_ids), "missing": staff.exclude(pk__in=enrolled_ids).order_by("username")[:15]}
     mfa_rows = []
     for role in settings.MFA_REQUIRED_ROLES:
         holders = list(users_with_role(role))
@@ -54,6 +57,7 @@ def dashboard(request):
         "locked": locked,
         "sessions": active_sessions()[:50],
         "mfa_rows": mfa_rows,
+        "mfa_all": mfa_all,
         "expired": expired,
         "expiring": expiring,
         "max_age": max_age,
@@ -142,6 +146,8 @@ def activity(request):
                 "sessions": target.tracked_sessions.all()[:20],
                 "roles": sorted(role_names(target)),
                 "can_control": has_role(request.user, *CONTROL_ROLES),
+                "can_reset_mfa": has_role(request.user, "ict_admin") and target.pk != request.user.pk,
+                "mfa_enrolled": TOTPDevice.objects.filter(user=target, confirmed=True).exists(),
             }
         )
         audit.record("security.activity_viewed", target, f"Activity of {target.username} viewed for {start}–{end}")
@@ -178,4 +184,32 @@ def end_user_sessions(request, user_id):
 
     raise_alert("sessions_revoked", f"{request.user.username} ended {count} session(s) of {target.username}.", severity="low", user=target, dedupe_minutes=0)
     messages.success(request, f"{count} session(s) of {target.display_name()} ended.")
+    return redirect(f"/security/activity/?user={target.pk}")
+
+
+@require_POST
+@role_required("ict_admin")
+def reset_mfa(request, user_id):
+    """Lost phone: remove a user's authenticator and backup codes so they enrol again at next sign-in. Never your own."""
+    from django_otp.plugins.otp_static.models import StaticDevice
+
+    target = get_object_or_404(get_user_model(), pk=user_id)
+    if target.pk == request.user.pk:
+        messages.error(request, "You cannot reset your own two-step sign-in. Ask another application administrator.")
+        return redirect(f"/security/activity/?user={target.pk}")
+    TOTPDevice.objects.filter(user=target).delete()
+    StaticDevice.objects.filter(user=target).delete()
+    end_sessions(target, by=request.user, reason="two-step sign-in reset")
+    from .services import raise_alert
+
+    reason = request.POST.get("reason", "")[:200]
+    audit.record("security.mfa_reset", target, f"Two-step sign-in of {target.username} reset by {request.user.username}: {reason}")
+    raise_alert(
+        "mfa_reset",
+        f"{request.user.username} reset the two-step sign-in of {target.username} ({reason or 'no reason given'}).",
+        severity="medium",
+        user=target,
+        dedupe_minutes=0,
+    )
+    messages.success(request, f"Two-step sign-in reset for {target.display_name()}. They will enrol a new authenticator at their next sign-in.")
     return redirect(f"/security/activity/?user={target.pk}")

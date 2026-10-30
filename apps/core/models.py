@@ -75,6 +75,7 @@ class Parameter(models.Model):
         "alert-bulk-view-per-hour": (60, "Raise a security alert when one user opens more member profiles than this in an hour."),
         "alert-failed-logins": (5, "Raise a security alert after this many failed sign-ins for one username within 15 minutes."),
         "alert-failed-logins-address": (20, "Raise a security alert after this many failed sign-ins from one address (any usernames) within 15 minutes."),
+        "alert-failed-mfa": (5, "Raise a security alert after this many wrong two-step codes for one user within 15 minutes."),
         "alert-failed-trn-per-hour": (10, "Raise a security alert when one user's invalid or mismatched TRN checks exceed this in an hour."),
         "dsr-days": (30, "Days allowed to answer a data-subject request."),
         "breach-report-hours": (72, "Hours to report a personal-data breach to the Information Commissioner."),

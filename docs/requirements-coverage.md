@@ -1,4 +1,4 @@
-# Requirement coverage — v0.2.0
+# Requirement coverage — v0.2.1
 
 Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Built** = working in this release;
 **Mock** = working end to end against a mock adapter (real endpoint is configuration in Phase B);
@@ -29,9 +29,10 @@ Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Bu
 
 | Group | Rows | Status | Notes |
 |---|---|---|---|
-| User Management | UM10001, 02, 04, 07, 08, 09, 10, 11 | Built | Sign-in, accounts via back office, TOTP MFA by role, temporary roles, Argon2, audit, TRN identity check, axes lockout + admin lock |
+| User Management | UM10001, 02, 04, 07, 08, 09, 10, 11 | Built | Sign-in, accounts via back office, TOTP MFA, temporary roles, Argon2, audit, TRN identity check, axes lockout + admin lock |
 | | UM10003 | Built | Self-service password reset by e-mail (v0.2) |
-| | UM10005, UM10006 | B | AD over LDAPS and OIDC/Entra (packages in `requirements-integrations.txt`) |
+| | UM10005, UM10006 | Built / Mock | AD over LDAPS with group → role/centre mapping and nightly sync; Entra ID OIDC single sign-on (v0.2.1). Demonstrated against the built-in directory; NHF's domain controllers and app registration are configuration in Phase B |
+| | UM10004 | Built | Two-step sign-in for every staff account with backup codes and administrator reset (v0.2.1) |
 | Data Management | DM10001, DM10002, DM10004, DM10005 | Built | Fernet field encryption for TRN payloads and notes, TLS at the proxy; role-based access + audit; separate settings per environment |
 | | DM10003 | B | pgBackRest on NHF's servers |
 | Integration | IN10001, IN10003, IN10006 | Built | REST + OpenAPI at `/api/docs/`, run log, portal endpoint |

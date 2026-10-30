@@ -6,6 +6,7 @@ All of it is configurable afterwards in the back office; the lists are confirmed
 from django.core.management.base import BaseCommand
 
 from apps.core.models import Centre, Parameter
+from apps.directory.models import GroupMapping
 from apps.privacy.models import ProcessingActivity
 from apps.rules.models import Benefit, MedicalCondition, Programme, RejectionReason
 
@@ -136,6 +137,22 @@ PROCESSING = [
 ]
 
 
+# Suggested AD group names; NHF renames or remaps them in the back office.
+GROUP_MAPPINGS = [
+    ("NHF-MRS-CustomerCare", "customer_care", None),
+    ("NHF-MRS-Supervisors", "supervisor", None),
+    ("NHF-MRS-Managers", "manager", None),
+    ("NHF-MRS-BackOffice", "back_office", None),
+    ("NHF-MRS-AppAdmins", "ict_admin", None),
+    ("NHF-MRS-Auditors", "auditor", None),
+    ("NHF-MRS-DPO", "dpo", None),
+    ("NHF-MRS-PrintOperators", "print_operator", None),
+    ("NHF-Centre-HWT", "", "HWT"),
+    ("NHF-Centre-MBJ", "", "MBJ"),
+    ("NHF-Centre-HO", "", "HO"),
+]
+
+
 class Command(BaseCommand):
     help = "Load reference data (idempotent; existing rows are left as configured)."
 
@@ -174,6 +191,9 @@ class Command(BaseCommand):
                     "security_measures": "Role-based access, MFA for privileged roles, field-level encryption of sensitive data, append-only audit, TLS",
                 },
             )
+        if not GroupMapping.objects.exists():
+            for group, role, centre in GROUP_MAPPINGS:
+                GroupMapping.objects.create(source="ad", group=group, role=role, centre=Centre.objects.filter(code=centre).first() if centre else None)
         Parameter.objects.get_or_create(
             key="mock-trn-service-down", defaults={"value": False, "description": "Demo only: makes the mock TRN adapter time out, to show the outage path."}
         )

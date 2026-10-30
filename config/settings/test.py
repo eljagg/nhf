@@ -14,3 +14,7 @@ STORAGES = {
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
 PORTAL_SHARED_SECRET = "test-portal-secret"  # noqa: S105  # nosec B105
+
+MFA_REQUIRED = False  # role-based enforcement still applies; all-staff enforcement has its own tests
+LDAP = {**LDAP, "ENABLED": False}  # noqa: F405
+OIDC = {**OIDC, "ENABLED": False}  # noqa: F405

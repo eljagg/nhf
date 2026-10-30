@@ -77,6 +77,9 @@ class SecurityAlert(models.Model):
         ("bulk_viewing", "Unusual number of member records opened"),
         ("trn_failures", "Unusual number of failed TRN checks"),
         ("account_locked", "Account locked"),
+        ("failed_mfa", "Repeated wrong two-step codes"),
+        ("mfa_reset", "Two-step sign-in reset by an administrator"),
+        ("directory", "Directory account change"),
         ("sessions_revoked", "Sessions ended by an administrator"),
     ]
     SEVERITIES = [("low", "Low"), ("medium", "Medium"), ("high", "High")]

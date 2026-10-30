@@ -14,11 +14,12 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import Group
 from django.contrib.auth.views import PasswordChangeView, PasswordResetConfirmView, PasswordResetView
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django_otp import login as otp_login
+from django_otp.plugins.otp_static.models import StaticDevice, StaticToken
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from apps.core import audit
@@ -44,7 +45,7 @@ def _safe_next(request, default="core:home"):
 
 
 def login_view(request):
-    """Sign in (UM10001). AD/LDAPS and OIDC single sign-on plug in here in Phase B (UM10005, UM10006)."""
+    """Sign in (UM10001). Local accounts, or Active Directory over LDAPS through ActiveDirectoryBackend (UM10005); Entra ID has its own button (UM10006)."""
     form = LoginForm(request, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.get_user()
@@ -53,7 +54,20 @@ def login_view(request):
         return redirect(_safe_next(request))
     if request.method == "POST":
         audit.record("auth.login_failed", None, f"Failed sign-in for {request.POST.get('username', '')[:60]}")
-    return render(request, "accounts/login.html", {"form": form, "idle": request.GET.get("idle")})
+    from django.conf import settings
+
+    return render(
+        request,
+        "accounts/login.html",
+        {
+            "form": form,
+            "idle": request.GET.get("idle"),
+            "directory_error": getattr(request, "directory_error", ""),
+            "ldap_enabled": settings.LDAP["ENABLED"],
+            "oidc_enabled": settings.OIDC["ENABLED"],
+            "oidc_label": settings.OIDC["BUTTON_LABEL"],
+        },
+    )
 
 
 @require_POST
@@ -86,8 +100,10 @@ def mfa_setup(request):
             TOTPDevice.objects.filter(user=request.user, confirmed=False).delete()
             otp_login(request, device)
             audit.record("auth.mfa_enrolled", request.user, "TOTP device enrolled")
+            request.session["new_backup_codes"] = issue_backup_codes(request.user)
+            request.session["after_backup_codes"] = _safe_next(request)
             messages.success(request, "Authenticator enrolled. You will be asked for a code at each sign-in.")
-            return redirect(_safe_next(request))
+            return redirect("accounts:mfa-backup-codes")
         error = "That code did not match. Check the time on your phone and try the current code."
     return render(request, "accounts/mfa_setup.html", {"qr": _qr_svg(device.config_url), "secret": base64.b32encode(device.bin_key).decode(), "error": error})
 
@@ -97,15 +113,74 @@ def mfa_verify(request):
     """Second factor at sign-in."""
     error = ""
     if request.method == "POST":
-        token = request.POST.get("token", "").strip()
-        for device in TOTPDevice.objects.filter(user=request.user, confirmed=True):
+        token = request.POST.get("token", "").replace(" ", "").strip()
+        devices = list(TOTPDevice.objects.filter(user=request.user, confirmed=True)) + list(StaticDevice.objects.filter(user=request.user, confirmed=True))
+        for device in devices:
             if device.verify_token(token):
                 otp_login(request, device)
-                audit.record("auth.mfa_verified", request.user, "MFA verified")
+                kind = "backup code" if isinstance(device, StaticDevice) else "authenticator code"
+                audit.record("auth.mfa_verified", request.user, f"MFA verified with {kind}")
+                if isinstance(device, StaticDevice):
+                    left = device.token_set.count()
+                    messages.warning(request, f"Backup code used. {left} left — generate new ones from My account if you are running low.")
                 return redirect(_safe_next(request))
         error = "Code not accepted."
         audit.record("auth.mfa_failed", request.user, "MFA code rejected")
+        _count_mfa_failure(request.user)
     return render(request, "accounts/mfa_verify.html", {"error": error, "next": request.GET.get("next", "")})
+
+
+def issue_backup_codes(user, count=10):
+    """Replace the user's backup codes with ten new single-use codes; returns them for one-time display."""
+    StaticDevice.objects.filter(user=user).delete()
+    device = StaticDevice.objects.create(user=user, name="Backup codes", confirmed=True)
+    codes = []
+    for _ in range(count):
+        code = StaticToken.random_token()
+        device.token_set.create(token=code)
+        codes.append(code)
+    audit.record("auth.backup_codes_issued", user, f"{count} backup codes issued", actor=user)
+    return codes
+
+
+def _count_mfa_failure(user):
+    from django.core.cache import cache
+
+    from apps.core.models import Parameter
+    from apps.security.services import raise_alert
+
+    key = f"mfa-fail:{user.pk}"
+    try:
+        n = cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, 15 * 60)
+        n = 1
+    if n >= int(Parameter.get("alert-failed-mfa")):
+        raise_alert(
+            "failed_mfa",
+            f"{n} wrong two-step codes for {user.username} within 15 minutes — password may be known to someone else.",
+            severity="high",
+            user=user,
+            dedupe_minutes=15,
+        )
+
+
+@login_required
+def mfa_backup_codes(request):
+    """Show newly issued backup codes once."""
+    codes = request.session.pop("new_backup_codes", None)
+    if not codes:
+        return redirect("accounts:me")
+    return render(request, "accounts/mfa_backup_codes.html", {"codes": codes, "next": request.session.pop("after_backup_codes", "/")})
+
+
+@require_POST
+@login_required
+def regenerate_backup_codes(request):
+    """New set of backup codes (old ones stop working)."""
+    request.session["new_backup_codes"] = issue_backup_codes(request.user)
+    request.session["after_backup_codes"] = reverse("accounts:me")
+    return redirect("accounts:mfa-backup-codes")
 
 
 class TemporaryRoleForm(forms.Form):
@@ -172,6 +247,7 @@ def my_account(request):
             "temp": request.user.temporary_roles.select_related("group")[:10],
             "sessions": active_sessions(request.user),
             "current_key": request.session.session_key,
+            "backup_left": sum(d.token_set.count() for d in StaticDevice.objects.filter(user=request.user)),
         },
     )
 
