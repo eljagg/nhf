@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-start gap-5 mb-5">
+  {% include "_avatar.html" with photo_id=t.photo_id initials=t.first_name|slice:":1"|add:t.last_name|slice:":1" size="avatar-xl" %}
+  <div class="flex-1 min-w-[16rem]">
+    <h1 class="mb-1">{{ t.display_name }}</h1>
+    <p class="text-sm text-slate-500"><span class="font-mono">{{ t.username }}</span>{% if t.job_title %} · {{ t.job_title }}{% endif %}{% if t.centre %} · {{ t.centre }}{% endif %} · {{ t.get_source_display }}</p>
+    <div class="flex flex-wrap gap-2 mt-2">{% include "accounts/_staff_status.html" %}{% for r in roles %}<span class="b-brand">{{ r }}</span>{% endfor %}</div>
+    {% if status == "suspended" %}<div class="finding-error mt-3">Suspended {{ t.suspended_at|date:"j M Y, H:i" }} by {{ t.suspended_by.display_name|default:"—" }}{% if t.suspended_until %} until {{ t.suspended_until|date:"j M Y" }}{% else %} until reinstated{% endif %}: {{ t.suspension_reason }}</div>{% endif %}
+  </div>
+  <div class="flex flex-col gap-2 text-sm"><a class="btn-secondary" href="{% url 'security:activity' %}?user={{ t.pk }}">User activity</a></div>
+</div>
+<div class="grid xl:grid-cols-[3fr_2fr] gap-5">
+  <form method="post" class="card">{% csrf_token %}<div class="card-h"><h2>Staff details</h2></div><div class="card-b grid grid-cols-2 gap-3">
+    {% for f in form %}<div><label class="lbl" for="{{ f.id_for_label }}">{{ f.label|capfirst }}</label>{{ f }}{% if f.help_text %}<p class="text-xs text-slate-500">{{ f.help_text }}</p>{% endif %}{% for e in f.errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}</div>{% endfor %}
+    {% if can_edit %}<div class="col-span-2"><button class="btn-primary">Save details</button></div>{% endif %}
+  </div></form>
+  <div class="space-y-5">
+    <div class="card"><div class="card-h"><h2>Photo and ID picture</h2></div><div class="card-b space-y-4">
+      {% if can_edit %}<form method="post" action="{% url 'accounts:staff-image' t.pk 'photo' %}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-2">{% csrf_token %}<div><label class="lbl" for="img-photo">Profile photo</label><input id="img-photo" type="file" name="image" accept="image/jpeg,image/png,image/webp" required class="text-xs block"></div><button class="btn-secondary btn-sm">{% if t.photo_id %}Replace{% else %}Upload{% endif %}</button></form>{% endif %}
+      <div><p class="lbl">ID picture{% if t.id_type %} — {{ t.get_id_type_display }}{% endif %}</p>
+        {% if t.id_document_id %}{% if can_see_id %}<a href="{% url 'core:image' t.id_document_id %}" target="_blank" rel="noopener"><img class="id-doc" src="{% url 'core:image' t.id_document_id %}" alt="ID document of {{ t.display_name }}"></a><p class="text-xs text-slate-500 mt-1">Each view of the ID picture is recorded in the audit trail.</p>{% else %}<span class="b-green">On file</span> <span class="text-xs text-slate-500">(visible to application administrators and managers)</span>{% endif %}{% else %}<span class="b-grey">Not on file</span>{% endif %}
+      </div>
+      {% if can_edit %}<form method="post" action="{% url 'accounts:staff-image' t.pk 'id' %}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-2">{% csrf_token %}<div><label class="lbl" for="img-id">Scan or photo of the ID</label><input id="img-id" type="file" name="image" accept="image/jpeg,image/png,image/webp" required class="text-xs block"></div><button class="btn-secondary btn-sm">{% if t.id_document_id %}Replace{% else %}Upload{% endif %}</button></form>{% endif %}
+    </div></div>
+    {% if can_suspend %}<div class="card"><div class="card-h"><h2>{% if status == "suspended" %}Reinstate{% else %}Suspend account{% endif %}</h2></div><div class="card-b">
+      {% if status == "suspended" %}<form method="post" action="{% url 'accounts:staff-reinstate' t.pk %}" class="space-y-2">{% csrf_token %}<label class="lbl" for="note">Note</label><input id="note" class="inp" name="note" placeholder="e.g. Investigation closed, HR ref. 2026-114"><button class="btn-primary">Reinstate</button></form>
+      {% else %}<p class="text-sm text-slate-600 mb-3">Sign-in is refused and every open session ends at once. Records and audit history are kept. Directory sign-in is blocked too.</p>
+      <form method="post" action="{% url 'accounts:staff-suspend' t.pk %}" class="space-y-2">{% csrf_token %}<div><label class="lbl" for="reason">Reason</label><input id="reason" class="inp" name="reason" required placeholder="e.g. Pending HR investigation, ref. 2026-114"></div><div><label class="lbl" for="until">Until (optional)</label><input id="until" class="inp w-48" type="date" name="until"></div><button class="btn-danger" data-confirm="Suspend {{ t.display_name }} and sign them out everywhere?">Suspend account</button></form>{% endif %}
+    </div></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

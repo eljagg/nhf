@@ -94,3 +94,12 @@ def integrations(request):
     summary = IntegrationRun.objects.values("system").annotate(n=Count("id"), failed=Count("id", filter=Q(ok=False))).order_by("system")
     page = Paginator(qs, 50).get_page(request.GET.get("page"))
     return render(request, "core/integrations.html", {"page": page, "summary": summary, "system": system, "page_title": "Integration Hub"})
+
+
+@login_required
+def image(request, pk):
+    """Serve a stored image to a viewer whose role allows that kind."""
+    from . import images
+    from .models import StoredImage
+
+    return images.serve(request, StoredImage.objects.filter(pk=pk).first())

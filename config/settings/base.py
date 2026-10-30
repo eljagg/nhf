@@ -7,6 +7,7 @@ Environment-specific values come from environment variables (see .env.example).
 Never put secrets in this file.
 """
 
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -74,7 +75,7 @@ PRODUCT_NAME = env("PRODUCT_NAME", default="Registry Platform")
 BUILT_BY = env("BUILT_BY", default="")
 EDITION_NAME = "Member Registration"
 CLIENT_NAME = "National Health Fund"
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -198,6 +199,7 @@ CELERY_BEAT_SCHEDULE = {
     "expire-temporary-roles": {"task": "apps.accounts.tasks.expire_temporary_roles", "schedule": timedelta(minutes=15)},
     "retention-sweep": {"task": "apps.privacy.tasks.retention_sweep", "schedule": timedelta(hours=24)},
     "directory-sync": {"task": "apps.directory.tasks.sync_directory_users", "schedule": timedelta(hours=24)},
+    "practitioner-recheck": {"task": "apps.doctors.tasks.recheck_registers", "schedule": timedelta(hours=24)},
 }
 
 # ----------------------------------------------------------------------------
@@ -345,6 +347,22 @@ OIDC = {
     "AUTHORITY": env("OIDC_AUTHORITY") or (f"https://login.microsoftonline.com/{env('OIDC_TENANT_ID')}/v2.0" if env("OIDC_TENANT_ID") else ""),
     "GROUPS_CLAIM": env("OIDC_GROUPS_CLAIM"),
     "BUTTON_LABEL": env("OIDC_BUTTON_LABEL"),
+}
+
+# ----------------------------------------------------------------------------
+# Council registers (doctors: Medical Council of Jamaica; nurses: Nursing Council of Jamaica)
+# MODE local = the local copy loaded from the council's extract; https = the council's verification service.
+# ----------------------------------------------------------------------------
+PRACTITIONER_REGISTERS = {
+    council: {
+        "MODE": os.environ.get(f"{council.upper()}_REGISTER_MODE", "local"),
+        "URL": os.environ.get(f"{council.upper()}_REGISTER_URL", ""),
+        "API_KEY": os.environ.get(f"{council.upper()}_REGISTER_API_KEY", ""),
+        "API_KEY_HEADER": os.environ.get(f"{council.upper()}_REGISTER_API_KEY_HEADER", "X-API-Key"),
+        "TIMEOUT": int(os.environ.get(f"{council.upper()}_REGISTER_TIMEOUT", "6")),
+        "SIMULATE_DOWN": False,
+    }
+    for council in ("mcj", "ncj")
 }
 
 LANGUAGE_CODE = "en-gb"

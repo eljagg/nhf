@@ -1,11 +1,33 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="mb-1">{{ doctor }}</h1>
-<p class="text-sm text-slate-500 mb-4">{{ doctor.get_status_display }}{% if doctor.confirmed_with_mcj_at %} · confirmed with the Medical Council {{ doctor.confirmed_with_mcj_at|date:"j M Y" }}{% endif %}</p>
-<div class="grid lg:grid-cols-2 gap-5">
-<form method="post" class="card">{% csrf_token %}<div class="card-h"><h2>Profile</h2></div><div class="card-b grid grid-cols-2 gap-3">
-{% for f in form %}<div><label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}</div>{% endfor %}
-<div class="col-span-2"><button class="btn-secondary">Save profile</button></div></div></form>
-<div class="card"><div class="card-h"><h2>Applications certified</h2></div><table class="tbl"><tbody>{% for a in apps %}<tr><td><a class="font-mono" href="{% url 'members:application' a.tracking_number %}">{{ a.tracking_number }}</a></td><td>{{ a.applicant_name }}</td><td>{% include "_status.html" with s=a.status %}</td></tr>{% empty %}<tr><td class="text-slate-500">None in this system yet.</td></tr>{% endfor %}</tbody></table></div>
+<div class="flex flex-wrap items-start gap-5 mb-5">
+  {% include "_avatar.html" with photo_id=p.photo_id initials=p.first_name|slice:":1"|add:p.last_name|slice:":2" size="avatar-xl" %}
+  <div class="flex-1 min-w-[16rem]">
+    <h1 class="mb-1">{{ p.title }} {{ p.first_name }} {{ p.last_name }}</h1>
+    <p class="text-sm text-slate-500"><span class="font-mono">{% if kind == "doctor" %}MCJ {{ p.mcj_number }}{% else %}NCJ {{ p.ncj_number }}{% endif %}</span>{% if p.specialty %} · {{ p.specialty }}{% endif %}</p>
+    <div class="flex flex-wrap gap-2 mt-2">
+      {% if p.status == "confirmed" %}<span class="b-green">Confirmed{% if p.verified_via == "register" %} from the council register{% elif p.verified_via == "manual" %} by NHF staff{% endif %}</span>{% elif p.status == "pending" %}<span class="b-amber">{{ p.get_status_display }}</span>{% else %}<span class="b-red">{{ p.get_status_display }}</span>{% endif %}
+      {% include "doctors/_register_badge.html" %}
+    </div>
+    {% if p.full_address %}<p class="text-sm mt-2">{{ p.practice_name }}{% if p.practice_name %} · {% endif %}{{ p.full_address }}</p>{% endif %}
+    {% if p.register_concern %}<div class="finding-warning mt-3">The {{ council }} register showed this registration as <strong>{{ p.get_register_status_display }}</strong> on {{ p.register_checked_at|date:"j M Y" }}. Check before accepting new certifications.</div>{% endif %}
+  </div>
+  {% if can_edit %}<div class="flex flex-col gap-2 items-stretch">
+    <form method="post" action="{% url 'doctors:check-register' kind p.number %}">{% csrf_token %}<button class="btn-primary w-full">Check {{ council }} register now</button></form>
+    <form method="post" action="{% url 'doctors:photo' kind p.number %}" enctype="multipart/form-data" class="flex gap-2 items-center">{% csrf_token %}<label class="lbl sr-only" for="photo">Photo</label><input id="photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required class="text-xs w-48"><button class="btn-secondary btn-sm">{% if p.photo_id %}Replace photo{% else %}Add photo{% endif %}</button></form>
+  </div>{% endif %}
 </div>
+<div class="grid lg:grid-cols-2 gap-5">
+<form method="post" class="card">{% csrf_token %}<div class="card-h"><h2>Profile and practice location</h2></div><div class="card-b grid grid-cols-2 gap-3">
+{% for f in form %}<div class="{% if f.name == 'address_line1' or f.name == 'address_line2' or f.name == 'practice_name' %}col-span-2{% endif %}"><label class="lbl" for="{{ f.id_for_label }}">{{ f.label|capfirst }}</label>{{ f }}{% for e in f.errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}</div>{% endfor %}
+{% if can_edit %}<div class="col-span-2"><button class="btn-secondary">Save profile</button></div>{% endif %}</div></form>
+<div class="space-y-5">
+<div class="card"><div class="card-h"><h2>Council register</h2></div><div class="card-b"><dl class="kv">
+  <dt>Register status</dt><dd>{{ p.get_register_status_display }}</dd>
+  <dt>Registered until</dt><dd>{{ p.licence_valid_until|date:"j M Y"|default:"—" }}</dd>
+  <dt>Last checked</dt><dd>{{ p.register_checked_at|date:"j M Y, H:i"|default:"never" }}</dd>
+  <dt>Confirmed</dt><dd>{% if kind == "doctor" %}{{ p.confirmed_with_mcj_at|date:"j M Y"|default:"—" }}{% else %}{{ p.confirmed_with_ncj_at|date:"j M Y"|default:"—" }}{% endif %}{% if p.decision_note %} · {{ p.decision_note }}{% endif %}</dd>
+</dl></div></div>
+{% if kind == "doctor" %}<div class="card"><div class="card-h"><h2>Applications certified</h2></div><table class="tbl"><tbody>{% for a in apps %}<tr><td><a class="font-mono" href="{% url 'members:application' a.tracking_number %}">{{ a.tracking_number }}</a></td><td>{{ a.applicant_name }}</td><td>{% include "_status.html" with s=a.status %}</td></tr>{% empty %}<tr><td class="text-slate-500">None in this system yet.</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+</div></div>
 {% endblock %}

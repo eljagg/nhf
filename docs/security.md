@@ -1,4 +1,4 @@
-# Security controls — v0.2.1
+# Security controls — v0.2.2
 
 For NHF's ICT team and the penetration testers. Mapped to OWASP ASVS 4.0.3 Level 2 chapters and to the tender rows
 (UM, DM, AL, CS). Each control names where it lives so it can be checked in code or on screen.
@@ -19,6 +19,7 @@ For NHF's ICT team and the penetration testers. Mapped to OWASP ASVS 4.0.3 Level
 | Before the second factor is verified only sign-in, sign-out, MFA and password-reset pages are reachable | `OPEN_PATHS` in `apps/accounts/middleware.py` |
 | Lockout after 5 failures for 15 minutes (per username — shared counter PCs are not locked); administrator unlock on the Security page | django-axes, `security:unlock` |
 | Administrator temporary lock of an account | `User.locked_until` |
+| Account suspension (reason, optional end date): sign-in refused on every route (password, AD, Entra ID), all sessions ended immediately, any request from a suspended account signs it out; no self-suspension; the last application administrator cannot be suspended; audited and notified to managers | `apps/accounts/staff.py`, `MFAEnforcementMiddleware` |
 | Active Directory sign-in over LDAPS (UM10005): service-account bind, user found by sAMAccountName, password checked by binding as the user (never stored locally), disabled AD accounts refused, nested groups via the AD in-chain rule, LDAP filters escaped, certificate required, plain `ldap://` refused unless `LDAP_ALLOW_PLAIN=1` (lab only) | `apps/directory/ldap.py`, `ActiveDirectoryBackend` |
 | Roles and centre come from AD group mappings, refreshed at every sign-in; nobody in a mapped group → no account; directory accounts have no local password; a local account is never taken over by a matching directory name; nightly sync disables accounts removed, disabled or unmapped in AD and ends their sessions | `apps/directory/provisioning.py`, `sync_ad_users` |
 | Local break-glass administrator still signs in if the directory is down | `ActiveDirectoryBackend` skips local accounts with a password |
@@ -85,3 +86,14 @@ For NHF's ICT team and the penetration testers. Mapped to OWASP ASVS 4.0.3 Level
 Test accounts are the demo users in the README (synthetic data only). Points worth testing: role bypass on POST
 endpoints, the identity-field trigger (`UPDATE members_member SET last_name=…` must fail), portal HMAC, CSP, lockout,
 session revocation, password-reset token reuse, and access to `/privacy/` and `/security/` by non-privileged roles.
+
+## Photos and identity documents (v0.2.2)
+
+| Control | Where |
+|---|---|
+| Uploads limited to 8 MB, opened and verified with Pillow, only JPEG/PNG/WebP accepted, 50-megapixel decompression-bomb limit | `apps/core/images.py` |
+| Every image re-encoded as a new JPEG: EXIF (GPS position, camera serial) and anything appended to the file removed; resized (photos 512 px, ID pictures 1,600 px) | `images.store` |
+| Stored encrypted (Fernet, field key) in PostgreSQL, not in a web-served folder; served only through `/images/<id>/` after a role check | `StoredImage`, `core:image` |
+| Staff ID pictures: application administrators and managers only, `Cache-Control: no-store`, every view audited; ID numbers encrypted, masked to the last four characters for auditors | `VIEW_ROLES`, `User.id_number` |
+| Council register calls: HTTPS only, API key from environment, timeout, circuit breaker, logged in the Integration Hub | `apps/doctors/registers.py` |
+

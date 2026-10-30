@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">Council register import</h1>
+<p class="text-sm text-slate-600 mb-4">Load the register extract supplied by the Medical Council or the Nursing Council into the local copy used for automatic verification. Rows with the same registration number are replaced; nothing is deleted. You see a preview before anything is saved.</p>
+{% include "doctors/_registers.html" %}
+<div class="grid lg:grid-cols-2 gap-5">
+<form method="post" enctype="multipart/form-data" class="card">{% csrf_token %}<div class="card-h"><h2>Upload extract (CSV)</h2></div><div class="card-b space-y-3">
+  <div><label class="lbl" for="council">Council</label><select id="council" class="inp" name="council">{% for code, name in councils %}<option value="{{ code }}" {% if preview.council == code %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+  <div><label class="lbl" for="file">File</label><input id="file" class="text-sm" type="file" name="file" accept=".csv,text/csv" required></div>
+  <div class="flex gap-2"><button class="btn-secondary">Preview</button>{% if preview and not preview.error_count %}<button class="btn-primary" name="confirm" value="1">Import {{ preview.count }} rows</button>{% endif %}</div>
+  {% if preview and not preview.error_count %}<p class="text-xs text-slate-500">To import, choose the same file again and press Import (files are not kept between steps).</p>{% endif %}
+</div></form>
+<div class="card"><div class="card-h"><h2>Columns</h2></div><div class="card-b text-sm space-y-2">
+  <p>First row is the header. Only <code>registration_number</code> is required.</p>
+  <p class="font-mono text-xs">{{ columns|join:", " }}</p>
+  <p><code>status</code>: active / registered, lapsed / expired, suspended, removed / struck off. <code>valid_until</code>: YYYY-MM-DD. <code>specialty</code> holds the nurse category for the Nursing Council.</p>
+</div></div>
+</div>
+{% if preview %}<div class="card mt-5"><div class="card-h"><h2>Preview — {{ preview.name }}: {{ preview.count }} rows</h2>{% if preview.error_count %}<span class="b-red">{{ preview.error_count }} problem{{ preview.error_count|pluralize }}</span>{% else %}<span class="b-green">ready</span>{% endif %}</div>
+{% if preview.errors %}<ul class="card-b space-y-1">{% for e in preview.errors %}<li class="finding-error">{{ e }}</li>{% endfor %}</ul>{% endif %}
+<table class="tbl"><thead><tr><th>No.</th><th>Name</th><th>Specialty / category</th><th>Status</th><th>Valid until</th></tr></thead><tbody>{% for r in preview.rows %}<tr><td class="font-mono">{{ r.number }}</td><td>{{ r.title }} {{ r.first_name }} {{ r.last_name }}</td><td>{{ r.specialty }}</td><td>{{ r.status }}</td><td>{{ r.valid_until|date:"j M Y"|default:"—" }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% endblock %}

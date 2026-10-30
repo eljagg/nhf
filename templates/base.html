@@ -42,10 +42,10 @@
       <a href="{% url 'members:start' %}" class="btn-primary" accesskey="n">+ New application</a>
       <button type="button" class="btn-secondary theme-toggle" id="theme-toggle" title="Switch between light and dark mode" aria-label="Switch between light and dark mode"><span class="icon-moon" aria-hidden="true">☾</span><span class="icon-sun" aria-hidden="true">☀</span><span class="hidden xl:inline">Theme</span></button>
       <a href="{% url 'core:notifications' %}" class="btn-secondary" title="Notifications">Inbox{% if UNREAD %} <span class="b-red">{{ UNREAD }}</span>{% endif %}</a>
-      <div class="text-right text-xs leading-tight">
-        <a href="{% url 'accounts:me' %}" class="font-semibold no-underline">{{ user.display_name }}</a>
-        <div class="text-slate-500">{{ user.centre|default:"All centres" }}</div>
-      </div>
+      <a href="{% url 'accounts:me' %}" class="flex items-center gap-2 no-underline" title="My account">
+        {% include "_avatar.html" with photo_id=user.photo_id initials=user.first_name|slice:":1"|add:user.last_name|slice:":1" %}
+        <span class="text-right text-xs leading-tight"><span class="font-semibold block">{{ user.display_name }}</span><span class="text-slate-500">{{ user.centre|default:"All centres" }}</span></span>
+      </a>
       <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn-secondary btn-sm">Sign out</button></form>
     </header>
     <main class="flex-1 px-6 py-5">

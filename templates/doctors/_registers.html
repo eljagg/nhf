@@ -1,0 +1,3 @@
+<div class="card mb-5"><div class="card-h"><h2>Council registers</h2>{% if perms_import %}<a class="btn-secondary btn-sm" href="{% url 'doctors:register-import' %}">Import a register extract</a>{% endif %}</div><table class="tbl"><thead><tr><th>Council</th><th>Connection</th><th>Entries in local copy</th><th>Last updated</th></tr></thead><tbody>
+{% for r in registers %}<tr><td>{{ r.name }}</td><td>{% if r.mode == "https" %}<span class="b-green">Council service (HTTPS)</span>{% else %}<span class="b-grey">Local copy</span>{% if r.demo %} <span class="b-amber">synthetic demo data</span>{% endif %}{% endif %}</td><td>{{ r.entries }}</td><td>{{ r.updated|date:"j M Y, H:i"|default:"never" }}</td></tr>{% endfor %}
+</tbody></table></div>

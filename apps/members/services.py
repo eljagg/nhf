@@ -256,6 +256,16 @@ def evaluate(app):
                 "doctor_mcj",
             )
         )
+    if app.doctor and app.doctor.register_concern:
+        checked = timezone.localtime(app.doctor.register_checked_at).strftime("%d %b %Y")
+        outcome.findings.append(
+            engine.Finding(
+                "DV10001",
+                "warning",
+                f"The Medical Council register showed MCJ {app.doctor.mcj_number} as '{app.doctor.get_register_status_display()}' on {checked}. Check the certification before approving.",
+                "doctor_mcj",
+            )
+        )
     if app.srn_issue and app.srn_issue.status == "requested":
         outcome.findings.append(engine.Finding("SR10001", "warning", "Waiting for management approval of the Special Registration Number."))
     if not app.consent_given:

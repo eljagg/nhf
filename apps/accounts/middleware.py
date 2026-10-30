@@ -55,6 +55,11 @@ class MFAEnforcementMiddleware:
 
     def __call__(self, request):
         user = request.user
+        if user.is_authenticated and getattr(user, "is_suspended", False) and not request.path.startswith(("/static/", "/healthz")):
+            from django.contrib.auth import logout
+
+            logout(request)  # a suspension takes effect on the next request, wherever the person is signed in
+            return redirect(f"{reverse('accounts:login')}?suspended=1")
         if user.is_authenticated and not request.path.startswith(OPEN_PATHS):
             if mfa_required_for(user) and not mfa_satisfied(request):
                 from django_otp.plugins.otp_totp.models import TOTPDevice

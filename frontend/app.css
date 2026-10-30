@@ -70,6 +70,11 @@
   .kv { @apply grid grid-cols-[9rem_1fr] gap-x-3 gap-y-1.5 text-sm; }
   .kv dt { @apply text-slate-500; }
   .kv dd { @apply font-medium; }
+  .avatar { @apply inline-flex shrink-0 items-center justify-center rounded-full object-cover bg-brand-100 text-brand-800 font-semibold ring-1 ring-slate-200; }
+  .avatar-sm { @apply h-8 w-8 text-xs; }
+  .avatar-md { @apply h-12 w-12 text-sm; }
+  .avatar-xl { @apply h-28 w-28 text-3xl; }
+  .id-doc { @apply max-h-72 w-auto rounded-lg ring-1 ring-slate-200; }
   .lock { @apply inline-block text-[0.7rem] text-slate-500; }
   .stat { @apply card p-4; }
   .stat-n { @apply text-2xl font-bold text-brand-800 tabular-nums; }
@@ -260,3 +265,5 @@ html.dark .theme-toggle .icon-moon { display: none; }
   .ms-logo i:nth-child(1) { background: #f25022; } .ms-logo i:nth-child(2) { background: #7fba00; }
   .ms-logo i:nth-child(3) { background: #00a4ef; } .ms-logo i:nth-child(4) { background: #ffb900; }
 }
+html.dark .avatar { background: rgba(45,212,191,.12); color: #99f6e4; --tw-ring-color: rgba(148,163,184,.25); }
+html.dark .id-doc { --tw-ring-color: rgba(148,163,184,.25); }

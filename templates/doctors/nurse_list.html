@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4"><div><h1>Nurses register</h1><p class="text-sm text-slate-500">Nurses and midwives registered with the Nursing Council of Jamaica. <a href="?concern=1">Register concerns only</a>{% if concern %} · <a href="?">show all</a>{% endif %}</p></div>
+<div class="flex gap-2"><form class="flex gap-2"><input class="inp w-72" name="q" value="{{ q }}" placeholder="NCJ no., name, workplace or town" aria-label="Search nurses"><button class="btn-secondary">Search</button></form><a class="btn-primary" href="{% url 'doctors:nurse-add' %}">Add a nurse</a></div></div>
+<div class="card overflow-x-auto"><table class="tbl"><thead><tr><th></th><th>NCJ no.</th><th>Name</th><th>Category</th><th>Workplace</th><th>Status</th><th>Council register</th></tr></thead><tbody>
+{% for n in page %}<tr><td class="w-10">{% include "_avatar.html" with photo_id=n.photo_id initials=n.first_name|slice:":1"|add:n.last_name|slice:":1" %}</td><td><a class="font-mono" href="{% url 'doctors:nurse-detail' n.ncj_number %}">{{ n.ncj_number }}</a></td><td>{{ n.title }} {{ n.first_name }} {{ n.last_name }}</td><td>{{ n.get_category_display }}</td><td class="text-sm">{{ n.practice_name }}<div class="text-xs text-slate-500">{{ n.full_address }}</div></td><td>{% if n.status == "confirmed" %}<span class="b-green">Confirmed</span>{% elif n.status == "pending" %}<span class="b-amber">Awaiting NCJ</span>{% else %}<span class="b-red">Not confirmed</span>{% endif %}</td><td>{% include "doctors/_register_badge.html" with p=n %}</td></tr>{% empty %}<tr><td colspan="7">No nurses match.</td></tr>{% endfor %}
+</tbody></table>{% include "_pager.html" %}</div>
+{% endblock %}

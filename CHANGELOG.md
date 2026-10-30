@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.2.2 — 29 October 2026 — doctors' practice locations and photos, nurses, council register connector, staff profiles
+
+- **Doctors**: practice address (address, line 2, town/district, parish) alongside the practice name, shown on the register list and profile and searchable by town. Profile photo.
+- **Council register connector**: every new MCJ number is checked against the Medical Council register; a doctor in good standing is confirmed automatically, with no manual confirmation needed. Lapsed, suspended, removed or unknown numbers, or a register that cannot be reached, still go to the confirmation queue. Nothing is rejected automatically. Confirmed doctors and nurses are re-checked every night (every 30 days each, adjustable) and anyone the register no longer shows in good standing is flagged on their profile, on the register list and on applications they certify, and council confirmers are notified. *Check register now* button on every profile.
+- Two connection modes per council: **local copy** loaded from the register extract the council supplies (*Council register import*: CSV with preview), or the council's **HTTPS verification service** once one is agreed (`MCJ_REGISTER_MODE=https`, `MCJ_REGISTER_URL`, API key). Every check and import is in the Integration Hub log.
+- **Nurses register** (Nursing Council of Jamaica): NCJ number, category (registered nurse, midwife, nurse practitioner, enrolled assistant nurse, public health nurse, nurse anaesthetist), workplace and address, photo, register status; *Add a nurse* checks the NCJ register at once; NCJ confirmations sit beside MCJ ones in *Council confirmations*.
+- **Staff profiles** (*Staff* under Registry Core): photo, job title, phone, ID type, ID number (encrypted; shown to application administrators and managers, last four characters to auditors), ID expiry and ID picture (each view audited, never cached). Staff can set their own photo from *My account*; it shows in the top bar.
+- **Suspend an account**: with a reason and optional end date. Sign-in is refused (local, Active Directory and Microsoft) and every open session ends at once; managers are notified; *Reinstate* lifts it. You cannot suspend yourself or the last application administrator.
+- Images are checked, turned upright, resized and re-encoded on upload (removing GPS and camera data and anything hidden in the file), then stored encrypted in the database so they survive redeploys and are in the database backup.
+- The *MCJ confirmer* role is now *Council confirmer (MCJ / NCJ)*.
+
 ## v0.2.1 — 29 October 2026 — two-step sign-in for all staff, Active Directory, Entra ID
 
 - **Two-step sign-in is now compulsory for every staff account** (Data Protection Act safeguard). Enrolment issues ten single-use backup codes, shown once; *My account* shows how many are left and generates new ones. Using a backup code warns how many remain.

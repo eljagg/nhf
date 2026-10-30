@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import views
+from . import staff, views
 
 app_name = "accounts"
 urlpatterns = [
@@ -23,5 +23,11 @@ urlpatterns = [
         name="password-reset-complete",
     ),
     path("temporary-roles/", views.temporary_roles, name="temporary-roles"),
+    path("me/photo/", staff.my_photo, name="my-photo"),
+    path("staff/", staff.staff_list, name="staff"),
+    path("staff/<int:user_id>/", staff.staff_detail, name="staff-detail"),
+    path("staff/<int:user_id>/image/<str:kind>/", staff.staff_image, name="staff-image"),
+    path("staff/<int:user_id>/suspend/", staff.suspend, name="staff-suspend"),
+    path("staff/<int:user_id>/reinstate/", staff.reinstate, name="staff-reinstate"),
     path("temporary-roles/<int:pk>/revoke/", views.revoke_temporary_role, name="revoke-temporary-role"),
 ]

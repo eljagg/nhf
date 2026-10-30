@@ -1,5 +1,7 @@
 """Cross-cutting records: centres, parameters, audit events, notifications, integration runs."""
 
+import uuid
+
 from django.conf import settings
 from django.db import models
 
@@ -55,6 +57,7 @@ class Parameter(models.Model):
         "guardian-required-under-age": (18, "Applicants younger than this must have a guardian (BR10004)."),
         "jadep-age": (60, "Age at which the JADEP programme is assigned automatically (BR10005)."),
         "srn-prefix": ("9", "First digit of every Special Registration Number (SR10002)."),
+        "register-recheck-days": (30, "Confirmed doctors and nurses are re-checked against their council register this often (nightly batch)."),
         "work-lock-seconds": (90, "A record is shown as being worked on while the agent's heartbeat is newer than this (OR10010)."),
         "counter-target-minutes": (15, "Target time from entry to dispatch at the counter (PF10001)."),
         "nis-format-regex": (
@@ -165,3 +168,30 @@ class IntegrationRun(models.Model):
 
     def __str__(self):
         return f"{self.system}.{self.operation} {'ok' if self.ok else 'failed'}"
+
+
+class StoredImage(models.Model):
+    """A photo or ID image, re-encoded on upload (metadata stripped) and stored encrypted in the database.
+
+    Kept in PostgreSQL rather than a media folder so images survive redeploys, are covered by the database backup,
+    and are encrypted at rest with the field key like other personal data.
+    """
+
+    KINDS = [
+        ("staff_photo", "Staff profile photo"),
+        ("staff_id", "Staff ID document"),
+        ("practitioner_photo", "Doctor / nurse photo"),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    kind = models.CharField(max_length=20, choices=KINDS)
+    data = models.TextField(help_text="Fernet token of the JPEG bytes.")
+    content_type = models.CharField(max_length=30, default="image/jpeg")
+    width = models.PositiveIntegerField(default=0)
+    height = models.PositiveIntegerField(default=0)
+    size = models.PositiveIntegerField(default=0)
+    sha256 = models.CharField(max_length=64)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {self.width}×{self.height}"

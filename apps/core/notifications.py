@@ -28,8 +28,17 @@ TEMPLATES = {
     "srn-approval-needed": ("SRN approval needed", "{requester} asked for a Special Registration Number for {name} (DOB {dob}). Reason: {reason}."),
     "doctor-confirmation-needed": (
         "Doctor confirmation needed",
-        "MCJ number {mcj} on application {tracking} is not in the NHF Doctors register. Confirm with the Medical Council.",
+        "MCJ number {mcj} on application {tracking} is not in the NHF Doctors register and could not be confirmed from the Medical Council register ({register}). Confirm with the Medical Council.",
     ),
+    "nurse-confirmation-needed": (
+        "Nurse confirmation needed",
+        "NCJ number {ncj} could not be confirmed from the Nursing Council register ({register}). Confirm with the Nursing Council.",
+    ),
+    "practitioner-register-changed": (
+        "Council register change",
+        "{who} now shows as '{status}' on the council register. Review before accepting further certifications.",
+    ),
+    "staff-suspended": ("Account suspended", "{who} was suspended by {by}: {reason}."),
 }
 
 

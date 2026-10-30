@@ -10,4 +10,5 @@ urlpatterns = [
     path("inbox/<int:pk>/open/", views.notification_open, name="notification-open"),
     path("audit/", views.audit_trail, name="audit"),
     path("integrations/", views.integrations, name="integrations"),
+    path("images/<uuid:pk>/", views.image, name="image"),
 ]

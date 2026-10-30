@@ -33,6 +33,8 @@ class LoginForm(AuthenticationForm):
 
     def confirm_login_allowed(self, user):
         super().confirm_login_allowed(user)
+        if user.is_suspended:
+            raise forms.ValidationError("This account is suspended. Contact your manager or the application administrator.", code="suspended")
         if user.is_temporarily_locked:
             raise forms.ValidationError("This account is temporarily locked. Contact the application administrator.", code="locked")
 
@@ -62,6 +64,7 @@ def login_view(request):
         {
             "form": form,
             "idle": request.GET.get("idle"),
+            "suspended": request.GET.get("suspended"),
             "directory_error": getattr(request, "directory_error", ""),
             "ldap_enabled": settings.LDAP["ENABLED"],
             "oidc_enabled": settings.OIDC["ENABLED"],

@@ -59,3 +59,13 @@ dashboards and saved reports (step 8) in A3.
 16. **Lost phone** — as `ictadmin.james`: *User activity* → `cc.walker` → *Reset two-step sign-in* with a reason. `cc.walker` is signed out and enrols again; *Security* shows the alert. Try it on your own account: refused.
 17. **Active Directory** (`LDAP_ENABLED=1`, `LDAP_SERVER_URI=mock://demo`) — sign in as `ad.campbell` with the demo password: an account is created as Customer Care at Half-Way-Tree from her AD groups. `ad.nogroup` is told they are not in a group that gives access; `ad.disabled` is told the account is disabled.
 18. **Directory page** — as `ictadmin.james`: *Directory sign-in* → look up `ad.henry` → *Test connection* shows the bind, his groups and that he is enabled; *Edit group mappings* changes which group gives which role.
+
+## v0.2.2 additions
+
+19. **Automatic doctor verification**: on a new application, enter doctor MCJ **20015**. Dr Natalie Grant-Wright is not in the NHF register but is on the Medical Council register, so she is confirmed at once and the application is not held. Try **20022** (suspended) or **20029** (lapsed): each goes to *Council confirmations* showing what the register said. **99901** is not on the register at all.
+20. **Register concerns**: *NHF Doctors register* → *Show register concerns only*: four confirmed doctors whose registration has lapsed or been suspended since they were confirmed.
+21. **Practice address and photo**: open any doctor: address, town and parish in the profile; *Add photo*; *Check Medical Council register now*.
+22. **Nurses**: *Nurses register* → *Add a nurse* → NCJ **47001**: confirmed from the Nursing Council register with her name filled in. **47002** (lapsed) waits in *Council confirmations*; **47003** is already waiting.
+23. **Register import**: as `mgr.morgan`, go to *Council register import*, choose the Medical Council and a CSV with columns `registration_number,first_name,last_name,specialty,status,valid_until` → *Preview* → *Import*.
+24. **Staff profile and suspension**: as `ictadmin.james`, go to *Staff* → `cc.walker` → upload a photo and an ID picture, set the ID type and number → *Suspend account* with a reason. Anywhere `cc.walker` is signed in, the next click returns to sign-in and the account is reported as suspended; *Reinstate* restores it. As `auditor.shaw` the ID number shows only its last four characters and no ID picture.
+

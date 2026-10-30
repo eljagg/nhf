@@ -18,8 +18,8 @@ from django_otp.plugins.otp_static.models import StaticDevice
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from apps.cards.models import Card, clean_card_name
-from apps.core.models import Centre
-from apps.doctors.models import Doctor
+from apps.core.models import Centre, StoredImage
+from apps.doctors.models import CouncilRegisterEntry, Doctor, Nurse
 from apps.identity.models import TajIdentity
 from apps.interactions.models import Interaction
 from apps.members.models import Application, Enrolment, Guardian, Member, MemberCondition
@@ -77,6 +77,50 @@ DEMO_MEMBERS = {  # members already registered, with what NHF held at registrati
 }
 
 
+TOWNS = {
+    "KGN": ["Downtown Kingston", "Allman Town", "Rae Town"],
+    "AND": ["Half-Way-Tree", "Liguanea", "Constant Spring", "Papine", "Cross Roads"],
+    "CAT": ["Spanish Town", "Portmore", "Old Harbour", "Linstead"],
+    "CLA": ["May Pen", "Chapelton", "Lionel Town"],
+    "MAN": ["Mandeville", "Christiana", "Porus"],
+    "ELI": ["Black River", "Santa Cruz", "Junction"],
+    "WES": ["Savanna-la-Mar", "Negril", "Whitehouse"],
+    "HAN": ["Lucea", "Hopewell", "Green Island"],
+    "JAM": ["Montego Bay", "Cambridge", "Anchovy"],
+    "TRE": ["Falmouth", "Clark's Town", "Duncans"],
+    "ANN": ["St Ann's Bay", "Ocho Rios", "Brown's Town"],
+    "MAR": ["Port Maria", "Highgate", "Annotto Bay"],
+    "POR": ["Port Antonio", "Buff Bay", "Hope Bay"],
+    "THO": ["Morant Bay", "Yallahs", "Seaforth"],
+}
+HOSPITALS = {
+    "KGN": "Kingston Public Hospital",
+    "AND": "University Hospital of the West Indies",
+    "CAT": "Spanish Town Hospital",
+    "CLA": "May Pen Hospital",
+    "MAN": "Mandeville Regional Hospital",
+    "ELI": "Black River Hospital",
+    "WES": "Savanna-la-Mar Public General Hospital",
+    "HAN": "Noel Holmes Hospital",
+    "JAM": "Cornwall Regional Hospital",
+    "TRE": "Falmouth Public General Hospital",
+    "ANN": "St Ann's Bay Regional Hospital",
+    "MAR": "Port Maria Hospital",
+    "POR": "Port Antonio Hospital",
+    "THO": "Princess Margaret Hospital",
+}
+# Named council-register demo cases (docs/demo-script.md)
+REGISTER_DEMO = [
+    # council, number, title, first, last, specialty, status, valid_until
+    ("mcj", "20015", "Dr", "Natalie", "Grant-Wright", "Paediatrics", "active", date(2027, 12, 31)),
+    ("mcj", "20022", "Dr", "Ewan", "Blackwood", "General practice", "suspended", date(2027, 12, 31)),
+    ("mcj", "20029", "Dr", "Hortense", "Lindo", "Internal medicine", "lapsed", date(2025, 12, 31)),
+    ("ncj", "47001", "Nurse", "Kadian", "Ferguson", "Registered Nurse", "active", date(2027, 6, 30)),
+    ("ncj", "47002", "Nurse", "Sherona", "Pusey", "Registered Midwife", "lapsed", date(2025, 6, 30)),
+]
+NURSE_CATEGORY_LABELS = dict(Nurse.CATEGORIES)
+
+
 class Command(BaseCommand):
     help = "Seed synthetic demonstration data (requires --force)."
 
@@ -89,7 +133,12 @@ class Command(BaseCommand):
         if not opts["force"]:
             raise CommandError("Refusing to seed without --force (synthetic data; never on production).")
         if opts["if_missing"] and TajIdentity.objects.exists():
-            self.stdout.write("demo data present; skipped")
+            if not CouncilRegisterEntry.objects.exists():  # upgrade from v0.2.1: add practitioners without a full reseed
+                with transaction.atomic():
+                    self._practitioners(random.Random(1473))  # noqa: S311  # nosec B311
+                self.stdout.write(f"demo: practitioners added ({Nurse.objects.count()} nurses, {CouncilRegisterEntry.objects.count()} council register rows)")
+            else:
+                self.stdout.write("demo data present; skipped")
             return
         call_command("bootstrap_reference")
         call_command("bootstrap_roles")
@@ -99,6 +148,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             users = self._users()
             doctors = self._doctors(rng)
+            self._practitioners(random.Random(1473))  # noqa: S311  # nosec B311
             taj = self._taj(rng, opts["members"])
             self._members(rng, taj, doctors, users)
         self._open_queue(rng, doctors, users)
@@ -114,7 +164,7 @@ class Command(BaseCommand):
             cur.execute(
                 "TRUNCATE interactions_interactionnote, interactions_interaction, cards_card, members_applicationcondition, members_application, "
                 "members_membercondition, members_enrolment, members_guardian, members_member, identity_trnvalidation, identity_srnissue, identity_tajidentity, "
-                "doctors_doctor, core_notification, core_integrationrun, accounts_temporaryrole, privacy_datasubjectrequest, privacy_breach, "
+                "doctors_doctor, doctors_nurse, doctors_councilregisterentry, core_notification, core_integrationrun, accounts_temporaryrole, privacy_datasubjectrequest, privacy_breach, "
                 "privacy_retentionrun, security_securityalert, security_accesslog, security_usersession RESTART IDENTITY CASCADE"
             )
             cur.execute("ALTER SEQUENCE members_member_number_seq RESTART WITH 2000000001")
@@ -154,6 +204,131 @@ class Command(BaseCommand):
             StaticDevice.objects.filter(user=user).delete()
             users[username] = user
         return users
+
+    def _address(self, rng, parish):
+        return {
+            "address_line1": f"{rng.randint(1, 140)} {rng.choice(STREETS)}",
+            "address_line2": rng.choice(["", "", f"Suite {rng.randint(1, 12)}", f"Shop {rng.randint(1, 30)}"]),
+            "town": rng.choice(TOWNS.get(parish, ["—"])),
+        }
+
+    def _practitioners(self, rng):
+        """Practice addresses, the synthetic MCJ and NCJ register copies, and a nurses register."""
+        StoredImage.objects.filter(kind="practitioner_photo").delete()
+        now = timezone.now()
+        doctors = list(Doctor.objects.filter(status="confirmed"))
+        concerns = {d.pk: s for d, s in zip(rng.sample(doctors, min(4, len(doctors))), ["lapsed", "lapsed", "suspended", "lapsed"], strict=False)}
+        entries = []
+        for d in doctors:
+            for k, v in self._address(rng, d.parish).items():
+                setattr(d, k, v)
+            status = concerns.get(d.pk, "active")
+            valid = date(2025, 12, 31) if status == "lapsed" else date(rng.choice([2026, 2027]), 12, 31)
+            d.register_status, d.licence_valid_until = status, valid
+            d.register_checked_at = now - timedelta(days=rng.randint(1, 25))
+            d.verified_via = d.verified_via or "manual"
+            entries.append(
+                CouncilRegisterEntry(
+                    council="mcj",
+                    number=d.mcj_number,
+                    title="Dr",
+                    first_name=d.first_name,
+                    last_name=d.last_name,
+                    specialty=d.specialty,
+                    status=status,
+                    valid_until=valid,
+                    source="demo",
+                )
+            )
+        Doctor.objects.bulk_update(
+            doctors, ["address_line1", "address_line2", "town", "register_status", "licence_valid_until", "register_checked_at", "verified_via"]
+        )
+        for i in range(40):  # registered with the MCJ but not yet in the NHF register: confirmed automatically when first used
+            entries.append(
+                CouncilRegisterEntry(
+                    council="mcj",
+                    number=str(30001 + i * 3),
+                    title="Dr",
+                    first_name=rng.choice(FIRST_F + FIRST_M),
+                    last_name=rng.choice(LAST),
+                    specialty=rng.choice(DOCTOR_SPECIALTIES),
+                    status="active",
+                    valid_until=date(2027, 12, 31),
+                    source="demo",
+                )
+            )
+        parishes = [c[0] for c in TOWNS.items()]
+        nurses = []
+        categories = ["rn"] * 6 + ["rm", "rnrm", "np", "ean", "phn", "crna"]
+        for i in range(160):
+            parish = rng.choice(parishes)
+            cat = rng.choice(categories)
+            number = str(40001 + i * 11)
+            status = "lapsed" if i in (7, 93) else "active"
+            valid = date(2025, 6, 30) if status == "lapsed" else date(rng.choice([2026, 2027]), 6, 30)
+            first, last = rng.choice(FIRST_F + FIRST_M[:8]), rng.choice(LAST)
+            workplace = self._address(rng, parish)
+            if rng.random() < 0.6:  # hospital staff: the hospital's town; others at the town's health centre
+                workplace["practice_name"] = HOSPITALS[parish]
+            else:
+                workplace["practice_name"] = f"{workplace['town']} Health Centre"
+            nurses.append(
+                Nurse(
+                    ncj_number=number,
+                    first_name=first,
+                    last_name=last,
+                    category=cat,
+                    parish=parish,
+                    phone=f"876-{rng.randint(900, 999)}-{rng.randint(1000, 9999)}",
+                    status="confirmed",
+                    verified_via="register",
+                    confirmed_with_ncj_at=now - timedelta(days=rng.randint(30, 900)),
+                    register_status=status,
+                    licence_valid_until=valid,
+                    register_checked_at=now - timedelta(days=rng.randint(1, 25)),
+                    decision_note="Verified against the Nursing Council of Jamaica register",
+                    **workplace,
+                )
+            )
+            entries.append(
+                CouncilRegisterEntry(
+                    council="ncj",
+                    number=number,
+                    title="Nurse",
+                    first_name=first,
+                    last_name=last,
+                    specialty=NURSE_CATEGORY_LABELS[cat],
+                    status=status,
+                    valid_until=valid,
+                    source="demo",
+                )
+            )
+        Nurse.objects.bulk_create(nurses)
+        Nurse.objects.create(
+            ncj_number="47003",
+            first_name="Tricia",
+            last_name="Malcolm",
+            category="rn",
+            status="pending",
+            practice_name="Port Antonio Hospital",
+            parish="POR",
+            town="Port Antonio",
+        )
+        for council, number, title, first, last, spec, status, valid in REGISTER_DEMO:
+            entries.append(
+                CouncilRegisterEntry(
+                    council=council,
+                    number=number,
+                    title=title,
+                    first_name=first,
+                    last_name=last,
+                    specialty=spec,
+                    status=status,
+                    valid_until=valid,
+                    source="demo",
+                )
+            )
+        CouncilRegisterEntry.objects.bulk_create(entries, ignore_conflicts=True)
 
     def _doctors(self, rng):
         parishes = [c.parish for c in Centre.objects.all()]

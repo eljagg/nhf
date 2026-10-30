@@ -150,6 +150,8 @@ def callback(request):
             raise OidcError(f"Token exchange failed ({resp.status_code})")
         claims = verify_id_token(resp.json()["id_token"], stash["nonce"])
         user = provision(identity_from_claims(claims))
+        if user.is_suspended:
+            raise NotAuthorised("This account is suspended. Contact your manager or the application administrator.")
     except (OidcError, NotAuthorised, jwt.PyJWTError, requests.RequestException, KeyError) as exc:
         log.warning("Entra ID sign-in failed: %s", exc)
         audit.record("auth.sso_failed", None, f"Entra ID sign-in failed: {str(exc)[:200]}")

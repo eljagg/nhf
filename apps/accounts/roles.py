@@ -19,7 +19,10 @@ ROLES = {
     "auditor": ("Auditor", "Read-only access to records and the audit trail; medical conditions masked."),
     # process-specific roles
     "srn_approver": ("SRN approver", "May approve Special Registration Numbers."),
-    "mcj_confirmer": ("MCJ confirmer", "Confirms unknown doctors with the Medical Council of Jamaica."),
+    "mcj_confirmer": (
+        "Council confirmer (MCJ / NCJ)",
+        "Confirms doctors with the Medical Council and nurses with the Nursing Council when the register check cannot.",
+    ),
     "print_operator": ("Card print operator", "Works the card print queue."),
 }
 

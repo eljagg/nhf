@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="mb-1">MCJ confirmations</h1>
-<p class="text-sm text-slate-600 mb-4">MCJ numbers on forms that are not in the NHF Doctors register. Confirm each with the Medical Council of Jamaica: a confirmed doctor joins the register; if the Council cannot confirm, every open application certified by that number is rejected.</p>
-<div class="space-y-4">
+<h1 class="mb-1">Council confirmations</h1>
+<p class="text-sm text-slate-600 mb-4">Every new MCJ or NCJ number is checked against the council register first; anyone in good standing is confirmed automatically. What remains here could not be confirmed by the register (not found, lapsed, suspended, or the register was unreachable). Check each with the council. A doctor the Medical Council cannot confirm causes every open application they certified to be rejected.{% if concerns %} <a href="{% url 'doctors:list' %}?concern=1">{{ concerns }} confirmed practitioner{{ concerns|pluralize }} now show a register concern.</a>{% endif %}</p>
+{% include "doctors/_registers.html" with perms_import=can_decide %}
+<h2 class="mb-2">Doctors (Medical Council)</h2>
+<div class="space-y-4 mb-6">
 {% for r in rows %}
-<div class="card"><div class="card-h"><h2>MCJ <span class="font-mono">{{ r.d.mcj_number }}</span> {% if r.d.last_name %}— {{ r.d.first_name }} {{ r.d.last_name }} (as written){% endif %}</h2><span class="text-xs text-slate-500">since {{ r.d.created_at|date:"j M H:i" }}</span></div>
+<div class="card"><div class="card-h"><h2>MCJ <span class="font-mono">{{ r.d.mcj_number }}</span> {% if r.d.last_name %}— {{ r.d.first_name }} {{ r.d.last_name }} (as written){% endif %}</h2><span class="flex gap-2 items-center">{% include "doctors/_register_badge.html" with p=r.d %}<span class="text-xs text-slate-500">since {{ r.d.created_at|date:"j M H:i" }}</span></span></div>
 <div class="card-b">
-  <p class="text-sm mb-3">Waiting: {% for a in r.apps %}<a class="font-mono" href="{% url 'members:application' a.tracking_number %}">{{ a.tracking_number }}</a> {% empty %}no open applications{% endfor %}</p>
+  <p class="text-sm mb-3">Waiting: {% for a in r.apps %}<a class="font-mono" href="{% url 'members:application' a.tracking_number %}">{{ a.tracking_number }}</a> {% empty %}no open applications{% endfor %} · <a href="{% url 'doctors:detail' r.d.mcj_number %}">profile</a></p>
   {% if can_decide %}<form method="post" action="{% url 'doctors:decide' r.d.mcj_number %}" class="grid md:grid-cols-[1fr_1fr_2fr_auto_auto] gap-2 items-end">{% csrf_token %}
     <div><label class="lbl">First name</label><input class="inp" name="first_name" value="{{ r.d.first_name }}"></div>
     <div><label class="lbl">Last name</label><input class="inp" name="last_name" value="{{ r.d.last_name }}"></div>
@@ -15,6 +17,17 @@
     <button class="btn-danger" name="decision" value="reject" data-confirm="Reject every open application certified by MCJ {{ r.d.mcj_number }}?">Not confirmed</button>
   </form>{% endif %}
 </div></div>
-{% empty %}<div class="card card-b text-slate-500">Nothing to confirm.</div>{% endfor %}
+{% empty %}<div class="card card-b text-slate-500">No doctors waiting.</div>{% endfor %}
+</div>
+<h2 class="mb-2">Nurses (Nursing Council)</h2>
+<div class="space-y-4">
+{% for n in nurses %}
+<div class="card"><div class="card-h"><h2>NCJ <span class="font-mono">{{ n.ncj_number }}</span> {% if n.last_name %}— {{ n.first_name }} {{ n.last_name }}{% endif %}</h2><span class="flex gap-2 items-center">{% include "doctors/_register_badge.html" with p=n %}<span class="text-xs text-slate-500">since {{ n.created_at|date:"j M H:i" }}</span></span></div>
+<div class="card-b">{% if can_decide %}<form method="post" action="{% url 'doctors:decide-nurse' n.ncj_number %}" class="grid md:grid-cols-[3fr_auto_auto] gap-2 items-end">{% csrf_token %}
+    <div><label class="lbl">What the Council said</label><input class="inp" name="note" placeholder="e.g. Confirmed by e-mail from NCJ registry"></div>
+    <button class="btn-primary" name="decision" value="confirm">Confirmed</button>
+    <button class="btn-danger" name="decision" value="reject">Not confirmed</button>
+  </form>{% else %}<a href="{% url 'doctors:nurse-detail' n.ncj_number %}">Open profile</a>{% endif %}</div></div>
+{% empty %}<div class="card card-b text-slate-500">No nurses waiting.</div>{% endfor %}
 </div>
 {% endblock %}

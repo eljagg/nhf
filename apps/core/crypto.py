@@ -69,3 +69,16 @@ class EncryptedTextField(models.TextField):
         if value in (None, ""):
             return value
         return encrypt(str(value))
+
+
+def encrypt_bytes(value: bytes) -> str:
+    """Encrypt binary content (images) to a Fernet token."""
+    return _fernet().encrypt(value).decode()
+
+
+def decrypt_bytes(token: str) -> bytes:
+    """Decrypt binary content; returns b'' for an unreadable token."""
+    try:
+        return _fernet().decrypt(token.encode())
+    except (InvalidToken, ValueError):
+        return b""

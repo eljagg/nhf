@@ -68,6 +68,16 @@ One service from this repository plus a PostgreSQL database. Variables:
 | `MFA_REQUIRED` | `1` (default) — two-step sign-in for every staff account |
 | `MFA_DEMO_PRIVILEGED_ONLY` | `1` lets counter roles skip two-step sign-in while `DEMO_MODE=1` (managers, administrators and the DPO still need it) |
 
+### Council registers (doctors and nurses)
+
+| Variable | Value |
+|---|---|
+| `MCJ_REGISTER_MODE` / `NCJ_REGISTER_MODE` | `local` (default): the copy loaded on *Council register import* · `https`: the council's verification service |
+| `MCJ_REGISTER_URL` / `NCJ_REGISTER_URL` | e.g. `https://api.council.example/practitioners/{number}` (`{number}` is replaced) |
+| `MCJ_REGISTER_API_KEY` / `NCJ_REGISTER_API_KEY` | key issued by the council |
+| `MCJ_REGISTER_API_KEY_HEADER` | header name (default `X-API-Key`) |
+| `MCJ_REGISTER_TIMEOUT` | seconds (default 6) |
+
 ### Active Directory and Entra ID (optional)
 
 | Variable | Value |
@@ -97,9 +107,9 @@ domain is trusted automatically. Health check: `/healthz`.
 | `cc.walker` | Customer Care, Half-Way-Tree | Counter journey |
 | `cc.brown` | Customer Care, Montego Bay | Second agent (work locks) |
 | `sup.henry` | Supervisor + Customer Care | Online queue assignment |
-| `mgr.morgan` | Manager, SRN approver, MCJ confirmer | SRN approval, MCJ confirmations, temporary roles — MFA enrolment on first sign-in |
+| `mgr.morgan` | Manager, SRN approver, council confirmer | SRN approval, MCJ and NCJ confirmations, council register import, staff and suspensions, temporary roles — MFA enrolment on first sign-in |
 | `backoffice.lee` | Back-office power user | Programmes, benefits, conditions (`/backoffice/`) |
-| `ictadmin.james` | Application administrator | Users and roles — MFA on first sign-in, no member access |
+| `ictadmin.james` | Application administrator | Users, roles, staff profiles and ID, suspensions — MFA on first sign-in, no member access |
 | `auditor.shaw` | Auditor | Read-only, conditions masked, audit trail |
 | `print.reid` | Card print operator | Print queue |
 | `dpo.grant` | Data Protection Officer | Requests from members, breach register, processing register, retention — MFA on first sign-in |

@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.core import audit
 from apps.core.notifications import notify_role
 
-from .models import Doctor
+from .models import Doctor, Nurse
 
 
 def clean_mcj(value):
@@ -25,9 +25,66 @@ def resolve(mcj_number, *, tracking="", name_hint="", user=None, source="applica
         return doctor
     first, _, last = (name_hint or "").replace("Dr.", "").replace("Dr ", "").strip().rpartition(" ")
     doctor = Doctor.objects.create(mcj_number=mcj, first_name=first, last_name=last, status="pending", source=source)
-    audit.record("doctor.unknown", doctor, f"MCJ {mcj} not in register; sent for confirmation", actor=user)
-    notify_role("mcj_confirmer", "doctor-confirmation-needed", obj=doctor, link="/doctors/confirmations/", mcj=mcj, tracking=tracking or "—")
+    audit.record("doctor.unknown", doctor, f"MCJ {mcj} not in the NHF Doctors register; checking the Medical Council register", actor=user)
+    from .verification import verify
+
+    if verify(doctor, user=user) != "confirmed":
+        notify_role(
+            "mcj_confirmer",
+            "doctor-confirmation-needed",
+            obj=doctor,
+            link="/doctors/confirmations/",
+            mcj=mcj,
+            tracking=tracking or "—",
+            register=doctor.get_register_status_display() if doctor.register_checked_at else "register not reachable",
+        )
     return doctor
+
+
+def add_nurse(ncj_number, *, user, **details):
+    """Add a nurse by NCJ number; confirmed at once if the Nursing Council register shows them in good standing."""
+    ncj = clean_mcj(ncj_number)
+    if not ncj:
+        return None
+    nurse = Nurse.objects.filter(ncj_number=ncj).first()
+    if nurse:
+        return nurse
+    nurse = Nurse.objects.create(ncj_number=ncj, status="pending", **{k: v for k, v in details.items() if v})
+    audit.record("nurse.added", nurse, f"NCJ {ncj} added; checking the Nursing Council register", actor=user)
+    from .verification import verify
+
+    if verify(nurse, user=user) != "confirmed":
+        notify_role(
+            "mcj_confirmer",
+            "nurse-confirmation-needed",
+            obj=nurse,
+            link="/doctors/confirmations/",
+            ncj=ncj,
+            register=nurse.get_register_status_display() if nurse.register_checked_at else "register not reachable",
+        )
+    return nurse
+
+
+def confirm_nurse(nurse, *, user, note=""):
+    """NCJ confirmed the registration by phone/letter."""
+    nurse.status = "confirmed"
+    nurse.confirmed_with_ncj_at = timezone.now()
+    nurse.confirmed_by = user
+    nurse.verified_via = "manual"
+    nurse.decision_note = note
+    nurse.save()
+    audit.record("nurse.confirmed", nurse, f"{nurse} confirmed with the Nursing Council", actor=user)
+    return nurse
+
+
+def reject_nurse(nurse, *, user, note):
+    """NCJ could not confirm the registration."""
+    nurse.status = "rejected"
+    nurse.confirmed_by = user
+    nurse.decision_note = note
+    nurse.save()
+    audit.record("nurse.rejected", nurse, f"NCJ {nurse.ncj_number} not confirmed: {note}", actor=user)
+    return nurse
 
 
 def confirm(doctor, *, user, note="", **details):
@@ -36,6 +93,7 @@ def confirm(doctor, *, user, note="", **details):
         if value:
             setattr(doctor, key, value)
     doctor.status = "confirmed"
+    doctor.verified_via = "manual"
     doctor.confirmed_with_mcj_at = timezone.now()
     doctor.confirmed_by = user
     doctor.decision_note = note

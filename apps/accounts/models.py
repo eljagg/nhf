@@ -5,6 +5,8 @@ from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
 from django.utils import timezone
 
+from apps.core.crypto import EncryptedTextField
+
 
 class User(AbstractUser):
     """A staff user. Directory-sourced accounts (AD/LDAPS, OIDC) map onto this model in Phase B."""
@@ -23,6 +25,25 @@ class User(AbstractUser):
     external_id = models.CharField(max_length=120, blank=True, db_index=True, help_text="Directory object id (AD objectGUID / Entra oid).")
     directory_synced_at = models.DateTimeField(null=True, blank=True)
 
+    ID_TYPES = [
+        ("nids", "National ID (NIDS)"),
+        ("drivers", "Driver's licence"),
+        ("passport", "Passport"),
+        ("staff", "NHF staff ID card"),
+        ("other", "Other government ID"),
+    ]
+    job_title = models.CharField(max_length=80, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    photo = models.ForeignKey("core.StoredImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    id_type = models.CharField("ID type", max_length=10, choices=ID_TYPES, blank=True)
+    id_number = EncryptedTextField("ID number", blank=True, help_text="Stored encrypted.")
+    id_expiry = models.DateField("ID expiry", null=True, blank=True)
+    id_document = models.ForeignKey("core.StoredImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="ID picture")
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    suspended_until = models.DateTimeField(null=True, blank=True, help_text="Blank: until reinstated.")
+    suspension_reason = models.CharField(max_length=300, blank=True)
+    suspended_by = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
     def set_password(self, raw_password):
         """Record when the password changed; the new hash is added to the password history on save."""
         super().set_password(raw_password)
@@ -32,6 +53,17 @@ class User(AbstractUser):
     def display_name(self):
         """Full name or username."""
         return self.get_full_name() or self.username
+
+    @property
+    def is_suspended(self):
+        """True while a suspension is in force (an end date, if set, lifts it automatically)."""
+        return bool(self.suspended_at and (self.suspended_until is None or self.suspended_until > timezone.now()))
+
+    @property
+    def id_number_masked(self):
+        """Last four characters only."""
+        value = self.id_number or ""
+        return ("•" * max(len(value) - 4, 0) + value[-4:]) if value else ""
 
     @property
     def is_temporarily_locked(self):

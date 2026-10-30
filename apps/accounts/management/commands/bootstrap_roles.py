@@ -7,7 +7,14 @@ from apps.accounts.roles import ROLES
 
 # Back-office (Django admin) permissions per role. Member records are never edited through the admin.
 ADMIN_PERMS = {
-    "back_office": [("rules", None), ("core", "centre"), ("core", "parameter"), ("doctors", "doctor")],
+    "back_office": [
+        ("rules", None),
+        ("core", "centre"),
+        ("core", "parameter"),
+        ("doctors", "doctor"),
+        ("doctors", "nurse"),
+        ("doctors", "councilregisterentry"),
+    ],
     "ict_admin": [("accounts", "user"), ("accounts", "temporaryrole"), ("auth", "group"), ("directory", "groupmapping")],
     "dpo": [("privacy", None), ("core", "parameter")],
     "auditor": [("core", "auditevent"), ("core", "integrationrun"), ("core", "notification")],

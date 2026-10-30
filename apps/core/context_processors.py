@@ -29,7 +29,7 @@ def site(request):
     user = getattr(request, "user", None)
     if not user or not user.is_authenticated:
         return ctx
-    from apps.doctors.models import Doctor
+    from apps.doctors.models import Doctor, Nurse
     from apps.identity.models import SrnIssue
     from apps.members.models import Application
 
@@ -39,7 +39,11 @@ def site(request):
     proc = ("customer_care", "supervisor", "manager")
     online = Application.objects.filter(channel="online", status__in=Application.OPEN_STATUSES).count() if has_role(user, *proc) else None
     srn = SrnIssue.objects.filter(status="requested").count() if has_role(user, "manager", "srn_approver") else None
-    mcj = Doctor.objects.filter(status="pending").count() if has_role(user, "manager", "mcj_confirmer") else None
+    mcj = (
+        (Doctor.objects.filter(status="pending").count() + Nurse.objects.filter(status="pending").count())
+        if has_role(user, "manager", "mcj_confirmer")
+        else None
+    )
     alerts_open = dsr_open = breach_open = None
     if has_role(user, "ict_admin", "manager", "auditor"):
         from apps.security.models import SecurityAlert
@@ -68,10 +72,12 @@ def site(request):
             ],
         ),
         (
-            "Doctors",
+            "Doctors and nurses",
             [
-                _item("NHF Doctors register", "doctors:list", request, ("customer_care", "supervisor", "manager", "mcj_confirmer")),
-                _item("MCJ confirmations", "doctors:confirmations", request, ("manager", "mcj_confirmer", "supervisor"), mcj),
+                _item("NHF Doctors register", "doctors:list", request, ("customer_care", "supervisor", "manager", "mcj_confirmer", "auditor")),
+                _item("Nurses register", "doctors:nurses", request, ("customer_care", "supervisor", "manager", "mcj_confirmer", "auditor")),
+                _item("Council confirmations", "doctors:confirmations", request, ("manager", "mcj_confirmer", "supervisor"), mcj),
+                _item("Council register import", "doctors:register-import", request, ("manager", "mcj_confirmer", "back_office")),
             ],
         ),
         (
@@ -101,6 +107,7 @@ def site(request):
             "Registry Core",
             [
                 _item("Security", "security:dashboard", request, ("ict_admin", "manager", "auditor"), alerts_open),
+                _item("Staff", "accounts:staff", request, ("ict_admin", "manager", "auditor")),
                 _item("User activity", "security:activity", request, ("ict_admin", "manager", "auditor")),
                 _item("Directory sign-in", "directory:status", request, ("ict_admin", "manager", "auditor")),
                 _item("Audit trail", "core:audit", request, ("auditor", "manager", "ict_admin")),
@@ -112,4 +119,10 @@ def site(request):
         ),
     ]
     ctx["NAV"] = [{"title": t, "items": [i for i in items if i]} for t, items in sections if any(items)]
+    # Only the most specific match is highlighted (/doctors/nurses/ is not also "Doctors register").
+    active = [i for sec in ctx["NAV"] for i in sec["items"] if i.get("active")]
+    if len(active) > 1:
+        best = max(active, key=lambda i: len(i["url"]))
+        for i in active:
+            i["active"] = i is best
     return ctx

@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-1">Add a nurse</h1>
+<p class="text-sm text-slate-500 mb-4">Enter the Nursing Council registration number. The register is checked as soon as you save: a nurse in good standing is confirmed at once, anyone else waits in the confirmation queue.</p>
+<form method="post" class="card max-w-3xl">{% csrf_token %}<div class="card-b grid grid-cols-2 gap-3">
+{% for f in form %}<div class="{% if f.name == 'address_line1' or f.name == 'address_line2' or f.name == 'practice_name' %}col-span-2{% endif %}"><label class="lbl" for="{{ f.id_for_label }}">{{ f.label|capfirst }}</label>{{ f }}{% for e in f.errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}</div>{% endfor %}
+<div class="col-span-2 flex gap-2"><button class="btn-primary">Save and check register</button><a class="btn-secondary" href="{% url 'doctors:nurses' %}">Cancel</a></div></div></form>
+{% endblock %}

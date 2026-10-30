@@ -1,4 +1,4 @@
-# Requirement coverage — v0.2.1
+# Requirement coverage — v0.2.2
 
 Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Built** = working in this release;
 **Mock** = working end to end against a mock adapter (real endpoint is configuration in Phase B);
@@ -13,7 +13,7 @@ Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Bu
 | Eligibility and Business Rules | BR10001–11 | Built | DB trigger locks name/DOB/gender; rules engine; card version on reprint; reprint only for replacement or name/DOB change; programmes, benefits, conditions in `/backoffice/` |
 | TRN Validation | TV10001–08 | Mock | Mock adapter over a synthetic register; SOAP client (`SoapTrnAdapter`) ready for the ICTA WSDL; circuit breaker; fresh call every time |
 | Special Registration Number | SR10001–06 | Built | Request, manager approval (not the requester), 9-prefix random, collision-free, duplicate check, stored in the TRN field with annotation, screening |
-| Doctor Validation | DV10001–05 | Built | Register lookup, unknown → MCJ confirmation queue, non-confirmation rejects, Customer Care edits profiles |
+| Doctor Validation | DV10001–05 | Built | Register lookup; unknown numbers checked against the Medical Council register and confirmed automatically when in good standing (local copy from the MCJ extract, or the MCJ service when one is agreed); otherwise the confirmation queue; non-confirmation rejects; Customer Care edits profiles incl. practice address and photo; nightly re-check (v0.2.2) |
 | Online Registration | OR10001–02, OR10004–10 | Built | Signed `/api/intake/portal/`, TRN validated on arrival, online queue, new/change, change flag, referring doctor, worked-by indicator |
 | | OR10003 | Built / Mock | E-mail to Customer Care through the mail backend; SMS recorded as preview until the gateway is connected |
 | Card Printing | CP10003, CP10006, CP10007 | Built | Print queue of flagged cards, card table with ISO 7811 tracks, cleaned print names |
@@ -60,4 +60,6 @@ Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Bu
 | Per-user activity tracking with export | Built (v0.2) |
 | Data-subject requests, breach register, processing register, retention | Built (v0.2) |
 | Excel/CSV and SQL Server/MySQL import; PostgreSQL, MySQL, SQL Server, Oracle and ODBC connectors | Planned v0.4 |
+| Doctor practice address and photo; nurses register with Nursing Council verification | Built (v0.2.2) |
+| Staff photo, ID picture and number; account suspension | Built (v0.2.2) |
 | Medical-institution connections with NHF approval | Planned v0.5 |
