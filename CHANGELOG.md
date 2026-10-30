@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.2 — 29 October 2026
+
+- Sign-in bars 40% narrower (20% → 12% of the bar area each); lettering and corner radius scaled to suit; shimmer re-aligned to the new positions.
+
 ## v0.1.1 — 29 October 2026 — sign-in redesign
 
 - Sign-in, two-step setup, code entry and account-locked screens rebuilt: frosted-glass card over a slow-moving background, with black, gold and green bars reading "Jamaica, Land We Love" and a light shimmer that sweeps right to left and back. The shimmer is off for anyone who has turned off animations.

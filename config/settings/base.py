@@ -55,7 +55,7 @@ PRODUCT_NAME = env("PRODUCT_NAME", default="Registry Platform")
 BUILT_BY = env("BUILT_BY", default="")
 EDITION_NAME = "Member Registration"
 CLIENT_NAME = "National Health Fund"
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 
 DJANGO_APPS = [
     "django.contrib.admin",

@@ -96,12 +96,12 @@
   .blob-c { width: 22rem; height: 22rem; right: -4rem; top: 18%; background: #fed100; opacity: .14; animation-duration: 36s; }
 
   /* Bars */
-  .ja-bars { position: relative; z-index: 1; grid-template-columns: 20% 20% 20%; justify-content: space-between; min-height: calc(100vh - 5rem); }
-  .ja-bar { position: relative; border-radius: 1.1rem; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  .ja-bars { position: relative; z-index: 1; grid-template-columns: 12% 12% 12%; justify-content: space-between; /* bars 12% wide: 40% narrower than v0.1.1 */ min-height: calc(100vh - 5rem); }
+  .ja-bar { position: relative; border-radius: .9rem; display: flex; align-items: center; justify-content: center; overflow: hidden;
     box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(0,0,0,.25), 0 18px 50px rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.18); }
   .ja-bar::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,255,255,.22), rgba(255,255,255,0) 35%, rgba(255,255,255,0) 70%, rgba(255,255,255,.12)); pointer-events: none; }
   .ja-bar span { writing-mode: vertical-rl; transform: rotate(180deg); text-transform: uppercase; font-weight: 800; letter-spacing: .38em;
-    font-size: clamp(1.4rem, 2.6vw, 2.9rem); white-space: nowrap; position: relative; }
+    font-size: clamp(1rem, 1.7vw, 1.9rem); white-space: nowrap; position: relative; }
   .ja-black { background: rgba(10, 10, 10, .92); }
   .ja-black span { color: var(--color-gold); }
   .ja-gold { background: rgba(254, 209, 0, .95); }
@@ -111,11 +111,11 @@
   /* One light band crosses all three bars right-to-left, then back left-to-right. Each bar carries a slice of the same
      band (sized to the whole bar group and offset by the bar's position), so the sweep is continuous and stays inside
      each bar's rounded corners. */
-  .ja-bar::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 500%; pointer-events: none; mix-blend-mode: overlay;
+  .ja-bar::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 833.333%; pointer-events: none; mix-blend-mode: overlay;
     background: linear-gradient(100deg, transparent 0%, transparent 44%, rgba(255,255,255,.9) 50%, transparent 56%, transparent 100%);
     background-size: 300% 100%; background-repeat: no-repeat; animation: ja-shimmer 7s ease-in-out infinite alternate; }
-  .ja-gold::after { left: -200%; }
-  .ja-green::after { left: -400%; }
+  .ja-gold::after { left: -366.667%; }
+  .ja-green::after { left: -733.333%; }
   .ja-bar span { z-index: 1; }
 
   /* Glass */
