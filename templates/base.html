@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{% block title %}{{ page_title|default:"Member Registration" }}{% endblock %} · {{ PRODUCT_NAME }}</title>
+  <script nonce="{{ request.csp_nonce }}">(function(){try{var t=localStorage.getItem("nhf-theme");if(t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark");}}catch(e){}})();</script>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <script src="{% static 'js/htmx.min.js' %}" nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'js/app.js' %}" nonce="{{ request.csp_nonce }}" defer></script>
@@ -39,6 +40,7 @@
         <input id="q-top" name="q" value="{{ request.GET.q }}" class="inp" placeholder="Find by TRN, member no., tracking no. or name  (press /)" autocomplete="off">
       </form>
       <a href="{% url 'members:start' %}" class="btn-primary" accesskey="n">+ New application</a>
+      <button type="button" class="btn-secondary theme-toggle" id="theme-toggle" title="Switch between light and dark mode" aria-label="Switch between light and dark mode"><span class="icon-moon" aria-hidden="true">☾</span><span class="icon-sun" aria-hidden="true">☀</span><span class="hidden xl:inline">Theme</span></button>
       <a href="{% url 'core:notifications' %}" class="btn-secondary" title="Notifications">Inbox{% if UNREAD %} <span class="b-red">{{ UNREAD }}</span>{% endif %}</a>
       <div class="text-right text-xs leading-tight">
         <a href="{% url 'accounts:me' %}" class="font-semibold no-underline">{{ user.display_name }}</a>

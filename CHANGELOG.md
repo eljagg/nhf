@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.3 — 29 October 2026
+
+- Dark mode for every signed-in screen, switched with the ☾/☀ Theme button in the top bar. The choice is remembered per browser; a first visit follows the computer's light/dark setting. Applied before the page draws, so there is no white flash.
+
 ## v0.1.2 — 29 October 2026
 
 - Sign-in bars 40% narrower (20% → 12% of the bar area each); lettering and corner radius scaled to suit; shimmer re-aligned to the new positions.

@@ -157,3 +157,95 @@
   .blob { animation: none !important; }
   .glass-btn:hover, a.stat:hover { transform: none; }
 }
+
+/* ------------------------------------------------------------------------
+   Dark mode for the signed-in app. <html class="dark"> is set before first
+   paint from the viewer's saved choice, else their system setting. Rules are
+   unlayered so they win over Tailwind utilities without !important.
+   ------------------------------------------------------------------------ */
+html.dark {
+  color-scheme: dark;
+  --dk-bg: #0b1514;
+  --dk-surface: #111d1c;
+  --dk-surface-2: #152422;
+  --dk-sunken: #0d1817;
+  --dk-border: #243633;
+  --dk-border-strong: #3a5550;
+  --dk-text: #e4ece9;
+  --dk-muted: #9db2ac;
+  --dk-faint: #6f8781;
+  --dk-link: #6fd3c1;
+  background: var(--dk-bg);
+  color: var(--dk-text);
+}
+html.dark body { background: var(--dk-bg); color: var(--dk-text); }
+html.dark a { color: var(--dk-link); }
+html.dark h1, html.dark h2 { color: var(--dk-text); }
+
+/* Surfaces */
+html.dark .card, html.dark .stat, html.dark [class~="bg-white"] { background-color: var(--dk-surface); border-color: var(--dk-border); box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+html.dark .card-h, html.dark .card-b { border-color: var(--dk-border); }
+html.dark [class~="bg-slate-50"], html.dark [class*="bg-slate-50/"], html.dark [class~="bg-slate-100"] { background-color: var(--dk-surface-2); }
+html.dark [class~="border-slate-100"], html.dark [class~="border-slate-200"], html.dark [class*="border-slate-200/"], html.dark [class~="border-slate-50"],
+html.dark [class~="divide-slate-100"] > * { border-color: var(--dk-border); }
+html.dark [class~="border-slate-300"] { border-color: var(--dk-border-strong); }
+html.dark .app-topbar { background: rgba(13, 24, 23, .82); border-color: var(--dk-border); }
+html.dark aside[aria-label="Modules"] { background: #0a2622; }
+html.dark aside[aria-label="Modules"] a { color: inherit; }
+html.dark .nav-a { color: rgba(238, 248, 246, .88); }
+html.dark .nav-a.on { color: #fff; }
+
+/* Text */
+html.dark [class~="text-slate-800"], html.dark [class~="text-slate-700"] { color: #d3dfdb; }
+html.dark [class~="text-slate-600"], html.dark [class~="text-slate-500"], html.dark .lbl, html.dark .kv dt, html.dark .stat-l, html.dark .lock { color: var(--dk-muted); }
+html.dark [class~="text-slate-400"] { color: var(--dk-faint); }
+html.dark .stat-n { color: #8ee3d3; }
+html.dark [class~="text-brand-700"] { color: var(--dk-link); }
+
+/* Forms */
+html.dark .inp, html.dark select.inp { background-color: var(--dk-sunken); color: var(--dk-text); border-color: var(--dk-border-strong); }
+html.dark .inp::placeholder { color: var(--dk-faint); }
+html.dark .inp:focus { border-color: #2bb39d; box-shadow: 0 0 0 3px rgba(43,179,157,.28); }
+html.dark .inp[readonly], html.dark .inp:disabled { background-color: #182826; color: #c4d3cf; }
+html.dark input[type="checkbox"], html.dark input[type="radio"] { accent-color: #2bb39d; }
+html.dark [class*="has-[:checked]:bg-brand-50"]:has(:checked) { background-color: rgba(43,179,157,.14); border-color: #2bb39d; }
+
+/* Buttons */
+html.dark .btn-secondary { background: var(--dk-surface-2); color: var(--dk-text); border-color: var(--dk-border-strong); }
+html.dark .btn-secondary:hover { background: #1c2f2c; }
+html.dark .btn-danger { background: transparent; color: #fca5a5; border-color: rgba(248,113,113,.55); }
+html.dark .btn-danger:hover { background: rgba(248,113,113,.1); }
+html.dark .btn-primary { background: #168a78; color: #fff; }
+html.dark .btn-primary:hover { background: #1b9e8a; }
+
+/* Tables */
+html.dark .tbl th { background: var(--dk-surface-2); color: var(--dk-muted); border-color: var(--dk-border); }
+html.dark .tbl td { border-color: var(--dk-border); }
+html.dark .tbl tr:hover td { background: rgba(43,179,157,.07); }
+
+/* Badges */
+html.dark .b-grey { background: rgba(148,163,184,.16); color: #cbd5e1; }
+html.dark .b-green { background: rgba(16,185,129,.18); color: #6ee7b7; }
+html.dark .b-amber { background: rgba(245,158,11,.18); color: #fcd34d; }
+html.dark .b-red { background: rgba(239,68,68,.18); color: #fca5a5; }
+html.dark .b-blue { background: rgba(56,189,248,.16); color: #7dd3fc; }
+html.dark .b-brand { background: rgba(43,179,157,.18); color: #8ee3d3; }
+
+/* Findings and messages */
+html.dark .finding-error, html.dark [class~="bg-red-50"], html.dark [class*="bg-red-50/"] { background: rgba(239,68,68,.12); border-color: rgba(248,113,113,.4); color: #fecaca; }
+html.dark .finding-warning, html.dark [class~="bg-amber-50"] { background: rgba(245,158,11,.12); border-color: rgba(251,191,36,.4); color: #fde68a; }
+html.dark .finding-info { background: rgba(56,189,248,.1); border-color: rgba(125,211,252,.35); color: #bae6fd; }
+html.dark [class~="bg-emerald-50"] { background: rgba(16,185,129,.12); border-color: rgba(52,211,153,.4); color: #a7f3d0; }
+html.dark [class~="text-red-900"], html.dark [class~="text-red-800"], html.dark [class~="text-red-700"] { color: #fca5a5; }
+html.dark [class~="text-amber-950"], html.dark [class~="text-amber-900"], html.dark [class~="text-amber-800"] { color: #fde68a; }
+html.dark [class~="text-emerald-900"] { color: #a7f3d0; }
+html.dark [class~="border-red-200"] { border-color: rgba(248,113,113,.4); }
+html.dark [class~="border-amber-200"], html.dark [class~="border-amber-300"] { border-color: rgba(251,191,36,.45); }
+html.dark [class~="border-emerald-200"] { border-color: rgba(52,211,153,.4); }
+html.dark [class~="border-brand-200"] { border-color: #2f6b61; }
+html.dark nav .badge.bg-amber-400 { color: #1a1300; }
+
+/* Theme toggle */
+.theme-toggle .icon-sun { display: none; }
+html.dark .theme-toggle .icon-sun { display: inline; }
+html.dark .theme-toggle .icon-moon { display: none; }

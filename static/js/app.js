@@ -7,6 +7,12 @@
       if (q) { e.preventDefault(); q.focus(); q.select(); }
     }
   });
+  // Light / dark mode: remembered per browser; first visit follows the system setting.
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest("#theme-toggle")) return;
+    var dark = document.documentElement.classList.toggle("dark");
+    try { localStorage.setItem("nhf-theme", dark ? "dark" : "light"); } catch (err) { /* private mode: still switches for this page */ }
+  });
   // Confirm buttons: <button data-confirm="...">
   document.addEventListener("click", function (e) {
     var el = e.target.closest("[data-confirm]");
