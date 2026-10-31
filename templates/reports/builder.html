@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-3">
+  <div><a class="text-xs" href="{% url 'reports:catalogue' %}">← Reports</a><h1>{% if saved %}{{ saved.name }}{% else %}Report builder{% endif %}</h1>
+    <p class="text-sm text-slate-500">Choose what to look at, how to filter it and how to group it. No IT request needed. Only fields your role may see are offered.</p></div>
+</div>
+<form method="get" class="card mb-5" id="builder" action="{% if saved %}{% url 'reports:saved' saved.pk %}{% else %}{% url 'reports:builder' %}{% endif %}">
+  <div class="card-b grid lg:grid-cols-[16rem_1fr] gap-5">
+    <div>
+      <label class="lbl" for="id_dataset">1. Look at</label>
+      <select name="dataset" id="id_dataset" class="inp" data-autosubmit>
+        {% for key, label, desc in datasets %}<option value="{{ key }}" {% if key == ds.key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <p class="text-xs text-slate-500 mt-1">{{ ds.description }}</p>
+    </div>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div><label class="lbl" for="id_group0">2. Group by</label>
+        {% for g in group_slots %}<select name="group" id="id_group{{ forloop.counter0 }}" class="inp {% if not forloop.first %}mt-2{% endif %}" aria-label="Group by {{ forloop.counter }}"><option value="">{% if forloop.first %}— no grouping (list records) —{% else %}— then by (optional) —{% endif %}</option>{% for f in groupable %}<option value="{{ f.key }}" {% if f.key == g %}selected{% endif %}>{{ f.label }}</option>{% endfor %}</select>{% endfor %}
+      </div>
+      <div><label class="lbl" for="id_measure">3. Show</label>
+        <select name="measure" id="id_measure" class="inp">{% for v, l in measures %}<option value="{{ v }}" {% if v == defn.measure %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        <p class="text-xs text-slate-500 mt-1">Used when grouping.</p>
+      </div>
+      <div><span class="lbl">Columns (when listing records)</span>
+        <div class="max-h-40 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded p-2 space-y-1">
+          {% for f in fields %}<label class="flex items-center gap-2 text-sm"><input type="checkbox" name="col" value="{{ f.key }}" {% if f.key in defn.columns %}checked{% endif %}> {{ f.label }}{% if f.sensitivity == "personal" %} <span class="text-[0.65rem] text-amber-700">personal</span>{% elif f.sensitivity == "health" %} <span class="text-[0.65rem] text-red-700">health</span>{% endif %}</label>{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card-b border-t border-slate-100 dark:border-slate-700">
+    <span class="lbl">4. Only include records where (optional)</span>
+    <div class="space-y-2">
+      {% for fr in filter_rows %}
+      <div class="grid sm:grid-cols-[1fr_12rem_1fr] gap-2">
+        <select name="f{{ forloop.counter0 }}_field" class="inp" aria-label="Filter {{ forloop.counter }} field"><option value="">—</option>{% for f in filterable %}<option value="{{ f.key }}" {% if f.key == fr.field %}selected{% endif %}>{{ f.label }}</option>{% endfor %}</select>
+        <select name="f{{ forloop.counter0 }}_op" class="inp" aria-label="Filter {{ forloop.counter }} comparison">{% for v, l in ops.items %}<option value="{{ v }}" {% if v == fr.op %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        <input name="f{{ forloop.counter0 }}_value" value="{{ fr.value }}" class="inp" aria-label="Filter {{ forloop.counter }} value" placeholder="value (dates as YYYY-MM-DD, choices by code e.g. walk_in)">
+      </div>
+      {% endfor %}
+    </div>
+    <p class="text-xs text-slate-500 mt-2">Codes for choice fields: {% for f in filterable %}{% if f.choices %}<span class="mr-2"><strong>{{ f.label }}</strong>: {% for v, l in f.choices %}{{ v }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}{% endfor %}</p>
+  </div>
+  <div class="px-4 pb-4 flex flex-wrap gap-2">
+    <button class="btn-primary" name="run" value="1">Run report</button>
+    <button class="btn-secondary" name="format" value="csv">Export CSV</button>
+    <button class="btn-secondary" name="format" value="xlsx">Export Excel</button>
+  </div>
+</form>
+
+{% if error %}<div class="msg bg-red-50 border-red-200 text-red-900 mb-4" role="alert">{{ error }}</div>{% endif %}
+
+{% if headers %}
+<div class="card mb-5">
+  <div class="card-h"><h2>Result <span class="font-normal text-sm text-slate-500">{{ row_count }} row{{ row_count|pluralize }}{% if row_count > rows|length %} · first {{ rows|length }} shown, all in the export{% endif %}</span></h2>
+    {% if personal %}<span class="b-amber" title="Exports are recorded in the audit trail">Includes personal columns: {{ personal|join:", " }}</span>{% endif %}</div>
+  {% if truncated %}<p class="px-4 pt-2 text-xs text-amber-800">Cut off at {{ limit }} rows (parameter report-row-limit). Add a filter or group the report.</p>{% endif %}
+  <div class="overflow-x-auto"><table class="tbl"><thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead><tbody>
+    {% for row in rows %}<tr>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>{% empty %}<tr><td colspan="{{ headers|length }}" class="text-slate-500">No records match.</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+<form method="post" action="{% if saved and saved.owner_id == request.user.pk %}{% url 'reports:builder-update' saved.pk %}{% else %}{% url 'reports:builder-save' %}{% endif %}" class="card p-4 flex flex-wrap items-end gap-3">{% csrf_token %}
+  <input type="hidden" name="dataset" value="{{ defn.dataset }}"><input type="hidden" name="measure" value="{{ defn.measure }}">
+  {% for c in defn.columns %}<input type="hidden" name="col" value="{{ c }}">{% endfor %}
+  {% for g in defn.group_by %}<input type="hidden" name="group" value="{{ g }}">{% endfor %}
+  {% for f in defn.filters %}<input type="hidden" name="f{{ forloop.counter0 }}_field" value="{{ f.field }}"><input type="hidden" name="f{{ forloop.counter0 }}_op" value="{{ f.op }}"><input type="hidden" name="f{{ forloop.counter0 }}_value" value="{{ f.value }}">{% endfor %}
+  <div class="grow max-w-sm"><label class="lbl" for="id_name">{% if saved and saved.owner_id == request.user.pk %}Save changes as{% else %}Save this report as{% endif %}</label>{{ save_form.name }}</div>
+  <div class="grow max-w-sm"><label class="lbl" for="id_description">Note (optional)</label>{{ save_form.description }}</div>
+  <label class="flex items-center gap-2 text-sm">{{ save_form.shared }} Share with everyone who uses reports</label>
+  <button class="btn-secondary">Save</button>
+  {% if defn.group_by %}<p class="w-full text-xs text-slate-500">Grouped reports hold counts only, so they can be e-mailed on a schedule.</p>{% else %}<p class="w-full text-xs text-slate-500">Lists of records can be saved but not e-mailed. Group the report to schedule it.</p>{% endif %}
+</form>
+{% endif %}
+{% endblock %}

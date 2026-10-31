@@ -1,0 +1,17 @@
+<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
+  {% for k in kpis %}
+  <div class="kpi {% if k.warn %}ring-1 ring-amber-400{% endif %}">
+    <div class="kpi-v {% if k.warn %}text-amber-700 dark:text-amber-400{% endif %}">{{ k.value }}</div>
+    <div class="kpi-l">{{ k.label }}</div>
+    <div class="text-xs text-slate-600 dark:text-slate-300 mt-1">{{ k.note }}</div>
+  </div>
+  {% endfor %}
+</div>
+<div class="grid xl:grid-cols-2 gap-5">
+  <div class="card"><div class="card-h"><h2>Received and approved, by {{ daily_unit }}</h2><a class="text-xs" href="{% url 'reports:standard' 'daily-activity' %}?{{ qs }}">Report</a></div><div class="card-b">{{ daily }}</div></div>
+  <div class="card"><div class="card-h"><h2>Open applications by age</h2>{% if open_over_day %}<span class="b-amber">{{ open_over_day }} open more than a day</span>{% endif %}</div><div class="card-b">{{ ageing }}</div></div>
+  <div class="card"><div class="card-h"><h2>Applications by channel</h2><a class="text-xs" href="{% url 'reports:standard' 'applications' %}?{{ qs }}">Report</a></div><div class="card-b">{{ channels }}</div></div>
+  <div class="card"><div class="card-h"><h2>Top rejection reasons</h2><a class="text-xs" href="{% url 'reports:standard' 'rejections' %}?{{ qs }}">Report</a></div><div class="card-b">{{ reasons }}</div></div>
+  <div class="card xl:col-span-2"><div class="card-h"><h2>Active members by programme</h2><a class="text-xs" href="{% url 'reports:standard' 'membership' %}?{{ qs }}">Report</a></div><div class="card-b">{{ programmes }}</div></div>
+</div>
+<p class="text-xs text-slate-500 mt-3" role="status">Updated {{ refreshed|date:"j M Y H:i:s" }}</p>

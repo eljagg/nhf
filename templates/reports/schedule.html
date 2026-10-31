@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="text-xs" href="{% url 'reports:catalogue' %}">← Reports</a>
+<h1 class="mb-1">E-mail "{{ report.name }}" on a schedule</h1>
+<p class="text-sm text-slate-500 mb-4 max-w-2xl">Each person receives an Excel file showing what their own role may see. Only counts are sent: tables that name individual people are left out. People who lose their reporting role, or are suspended, stop receiving it automatically.</p>
+<form method="post" class="card max-w-2xl">{% csrf_token %}
+  <div class="card-b grid sm:grid-cols-3 gap-4">
+    <div><label class="lbl" for="id_frequency">{{ form.frequency.label }}</label>{{ form.frequency }}{% for e in form.frequency.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>
+    <div><label class="lbl" for="id_hour">{{ form.hour.label }}</label>{{ form.hour }}{% for e in form.hour.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>
+    <div><label class="lbl" for="id_period_days">{{ form.period_days.label }}</label>{{ form.period_days }}{% for e in form.period_days.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}</div>
+  </div>
+  <div class="card-b border-t border-slate-100 dark:border-slate-700">
+    <span class="lbl">Send to</span>
+    <div class="grid sm:grid-cols-2 gap-1 max-h-64 overflow-y-auto text-sm">{% for cb in form.recipients %}<label class="flex items-center gap-2">{{ cb.tag }} {{ cb.choice_label }}</label>{% endfor %}</div>
+    {% for e in form.recipients.errors %}<p class="text-xs text-red-700">{{ e }}</p>{% endfor %}
+    <p class="text-xs text-slate-500 mt-2">Only active staff with an e-mail address and a reporting role are listed.</p>
+  </div>
+  <div class="px-4 pb-4"><button class="btn-primary">Schedule</button></div>
+</form>
+{% if schedules %}
+<div class="card max-w-2xl mt-5"><div class="card-h"><h2>Schedules for this report</h2></div><table class="tbl"><thead><tr><th>When</th><th>Recipients</th><th>Next</th><th>Last</th><th>Active</th></tr></thead><tbody>
+{% for s in schedules %}<tr><td>{{ s.get_frequency_display }} at {{ s.hour }}:00</td><td>{{ s.recipients.all|join:", " }}</td><td>{{ s.next_run_at|date:"j M H:i" }}</td><td class="text-xs">{{ s.last_result|default:"—" }}</td><td>{{ s.active|yesno:"Yes,No" }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% endif %}
+{% endblock %}

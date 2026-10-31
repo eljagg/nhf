@@ -77,4 +77,15 @@
     names.forEach(function (n) { var el = document.getElementById(n); if (el) el.addEventListener("change", update); });
     update();
   });
+  // Report pages: print button and auto-submit selects (no inline handlers under the CSP).
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("[data-print]")) { e.preventDefault(); window.print(); }
+  });
+  document.addEventListener("change", function (e) {
+    var el = e.target.closest("[data-autosubmit]");
+    if (el && el.form) {
+      el.form.querySelectorAll("[name=col],[name=group],[name^=f]").forEach(function (x) { if (x !== el) x.disabled = true; });
+      el.form.submit();
+    }
+  });
 })();

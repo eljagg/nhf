@@ -20,8 +20,9 @@ verification and dispatch (A2) and dashboards, documents and scanning (A3) follo
 | Identity Verification | `identity` | TRN adapter (mock now, SOAP client ready), match/mismatch, outage circuit breaker, SRN with manager approval and duplicate check, screening |
 | Doctors | `doctors` | NHF Doctors register, MCJ confirmation workflow, rejection on non-confirmation |
 | Online Intake | `intake`, `api` | Signed doctor-portal endpoint, online queue, change-form flag, "being worked by" locks, assignment |
-| Card Services | `cards` | Card versions, ISO 7811 track strings, print queue (print/verify/dispatch in A2) |
+| Card Services | `cards` | Card versions, ISO 7811 track strings, print queue (print/verify/dispatch in v0.6) |
 | Interactions | `interactions` | Append-only log of every event and contact, with notes |
+| Reports | `reports` | Live dashboard, twelve standard reports, report builder, saved/shared reports, CSV/Excel export, scheduled e-mails, escalation of overdue work |
 
 ## Stack
 
@@ -100,6 +101,11 @@ Group mappings (AD group → role and/or centre) are in `/backoffice/` → *Grou
 
 The entrypoint migrates, loads roles and reference data, seeds the demo set, then starts Gunicorn. Railway's public
 domain is trusted automatically. Health check: `/healthz`.
+
+Scheduled jobs: Railway runs only the web process, so there is no Celery beat. To have scheduled report e-mails and
+overdue-work escalation run on their own, add a Railway cron service from the same repository with start command
+`/app/scripts/entrypoint.sh jobs` and schedule
+`*/15 * * * *`, giving it the same variables as the web service (DATABASE_URL, SECRET_KEY, FIELD_ENCRYPTION_KEY, e-mail settings). Without it, use *Send now* on a schedule. On NHF's servers the `beat` process does this.
 
 ## Demo users (synthetic data only)
 

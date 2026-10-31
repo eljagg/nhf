@@ -89,3 +89,12 @@ dashboards and saved reports (step 8) in A3.
 34. **Rules from the back of the form**: untick *Paper form is signed* and save to get a red finding. Tick *Applicant is incapacitated* on an adult to make Section B required. Tick *Person living with a disability* without JCPD proof to get a red finding; add the JCPD letter number and it turns into an info note.
 35. **Pick-up slip**: *Pick-up slip* (top right) prints the stub with the tracking number, form number, masked TRN and the collection centre's address, phone and hours.
 36. **Screening on the member record**: a member's page lists the screening tests they qualify for (e.g. Pap smear and mammogram for a woman of 47) with what NHF pays.
+
+## v0.3 additions
+
+37. **Dashboard**: as `mgr.morgan`, open *Dashboard* (Insights). Choose *Last 12 months* and press *Show*. The tiles show about 1,035 applications, a 91% approval rate and a 13-minute walk-in median against the 15-minute target. The chart switches to weeks for a long period. Leave the page open: the "Updated" time changes every minute.
+38. **Centre view**: sign in as `sup.henry` (Head Office). The dashboard and reports are held to Head Office, and the centre filter is replaced by "Your centre".
+39. **Standard reports**: *Reports* lists twelve standard reports. Open *Turnaround and the 15-minute target*, export it to Excel, then save it as "Weekly turnaround". As `auditor.shaw`, *Members by medical condition* is not listed.
+40. **Report builder**: open *Report builder* and choose *Members*. Group by *Age band*, then *Gender*, and press *Run report*: eight rows. Tick *Share with everyone* and save. Switch to listing *Member no.* and *TRN (masked)*: the TRN shows as •••-•••-123, and the export is recorded in the audit trail with "personal columns".
+41. **Schedule**: on *Reports*, choose *Schedule* next to the saved report, keep yourself as recipient and press *Schedule*. Then press *Send now*: an Excel file is e-mailed (on the demo it appears in the outbound notifications).
+42. **Escalation**: applications left open longer than 24 hours put a digest in the supervisor's *Inbox* once a day (parameter `escalate-open-hours`).

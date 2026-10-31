@@ -75,7 +75,7 @@ PRODUCT_NAME = env("PRODUCT_NAME", default="Registry Platform")
 BUILT_BY = env("BUILT_BY", default="")
 EDITION_NAME = "Member Registration"
 CLIENT_NAME = "National Health Fund"
-VERSION = "0.2.8"
+VERSION = "0.3.0"
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -112,6 +112,7 @@ LOCAL_APPS = [
     "apps.security",
     "apps.privacy",
     "apps.directory",
+    "apps.reports",
 ]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -203,6 +204,8 @@ CELERY_BEAT_SCHEDULE = {
     "directory-sync": {"task": "apps.directory.tasks.sync_directory_users", "schedule": timedelta(hours=1)},
     "id-expiry-check": {"task": "apps.core.tasks.check_id_expiry", "schedule": timedelta(hours=24)},
     "practitioner-recheck": {"task": "apps.doctors.tasks.recheck_registers", "schedule": timedelta(hours=24)},
+    "scheduled-reports": {"task": "apps.reports.tasks.send_due_reports", "schedule": timedelta(minutes=15)},
+    "escalate-overdue": {"task": "apps.reports.tasks.escalate_overdue", "schedule": timedelta(hours=1)},
 }
 
 # ----------------------------------------------------------------------------

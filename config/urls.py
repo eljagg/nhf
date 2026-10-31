@@ -33,6 +33,7 @@ urlpatterns = [
     path("accounts/oidc/", include("apps.directory.urls_oidc")),
     path("accounts/", include("apps.accounts.urls")),
     path("members/", include("apps.members.urls")),
+    path("reports/", include("apps.reports.urls")),
     path("identity/", include("apps.identity.urls")),
     path("doctors/", include("apps.doctors.urls")),
     path("cards/", include("apps.cards.urls")),

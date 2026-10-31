@@ -1,5 +1,55 @@
 # Changelog
 
+## v0.3.0 — 30 October 2026 — reporting and analytics
+
+- **Dashboard** (RA10002, RA10003): live figures that refresh every minute.
+  - Applications received and approved, open now, the walk-in median against the 15-minute target, cards waiting to print and active members.
+  - Charts: received and approved over time (by day, week or month depending on the period), open applications by age, channels, top rejection reasons and members by programme.
+  - Filter by period, centre and channel.
+- **Twelve standard reports** (RP10001, RP10002):
+  - day-by-day activity
+  - applications by centre and channel
+  - turnaround and the 15-minute target
+  - rejections by reason
+  - membership (programme, age band, gender, parish, double-subsidy groups)
+  - members by condition (clinical roles only)
+  - card production
+  - online applications from doctors
+  - doctor validation
+  - Special Registration Numbers
+  - staff productivity
+  - member behaviour (RA10001): what existing members ask for, how they reach NHF, interactions, and members with repeat card replacements
+  - Each report exports to CSV or Excel and prints cleanly.
+- **Report builder** (RP10003): staff build their own reports without IT.
+  - Pick applications, members, cards or interactions; group by up to two fields; count or average; filter up to four ways; list records or export.
+  - Save privately or share.
+  - Only fields the user's role may see are offered: health fields for clinical roles only, personal columns for reporting roles only, and the TRN is always masked.
+- **Scheduled reports** (NT10002): e-mail a saved report daily, weekly or monthly as an Excel file.
+  - Each recipient's copy is built with their own role, so supervisors see their own centre only.
+  - Only reports of counts can be scheduled, and tables that name individuals are left out of e-mails.
+  - Recipients who lose their reporting role or are suspended are skipped.
+  - A *Send now* button sends a copy immediately.
+- **Escalation of overdue work** (NT10003), hourly, at most one digest a day per person:
+  - applications open too long go to that centre's supervisors;
+  - doctors waiting for Medical Council confirmation go to confirmers and managers;
+  - SRN requests waiting go to approvers;
+  - cards waiting to print go to print operators.
+  - The thresholds are parameters.
+- **Security**:
+  - Every report view, run and export is in the audit trail, and exports with personal columns say so.
+  - Exports are rate-limited (`limit-report-exports-per-hour`) and capped (`report-row-limit`).
+  - CSV and Excel exports cannot carry spreadsheet formulas.
+  - Charts are drawn on the server with every label escaped, and no third-party scripts are added.
+- **Demo data**: a year of decided applications now sits behind the members, so every report has figures:
+  - walk-ins mostly inside 15 minutes;
+  - online, mailed and e-mailed forms;
+  - rejections with reasons;
+  - change forms;
+  - repeat replacements.
+  - Existing demo databases get it on the next deploy.
+- `python manage.py run_scheduled_jobs` runs the e-mails and escalation once, for hosts with no Celery beat (e.g. a Railway cron service).
+- The menu shows release numbers instead of internal sprint codes for features still to come.
+
 ## v0.2.8 — 30 October 2026 — the paper form digitised, How to apply page, subsidies
 
 - **Counter screen follows the paper form** (NHF Card / Change Request, revision 12, March 2026), top to bottom: form serial and revision; request type (change member details, update medical record, replace card); **Section A** with title, occupation and post office; **Section B** with relationship type (parent, guardian, field officer, institution), institution name, title, address, parish, contact, TRN and ID type and number (encrypted); the resident-of-Jamaica **declaration** with date; **Section C** with doctor's office address, parish and phone, date certified, Mild / Severe per condition, the doctor's "total number of conditions" and confirmation of the doctor's signature.

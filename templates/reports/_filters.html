@@ -1,0 +1,10 @@
+{# Shared period / centre / channel filters (GET). #}
+<form method="get" class="card p-3 mb-5 flex flex-wrap items-end gap-3 no-print" aria-label="Report filters">
+  <div><label class="lbl" for="id_preset">Period</label>{{ form.preset }}</div>
+  <div><label class="lbl" for="id_date_from">From</label>{{ form.date_from }}</div>
+  <div><label class="lbl" for="id_date_to">To</label>{{ form.date_to }}</div>
+  {% if form.centre %}<div><label class="lbl" for="id_centre">Centre</label>{{ form.centre }}</div>{% else %}<div class="text-xs text-slate-500 self-center">Your centre: <strong>{{ period.centre.name }}</strong></div>{% endif %}
+  <div><label class="lbl" for="id_channel">Channel</label>{{ form.channel }}</div>
+  <button class="btn-primary">Show</button>
+  <span class="text-xs text-slate-500 self-center">Showing {{ period.start_date|date:"j M Y" }} – {{ period.end_date|date:"j M Y" }}</span>
+</form>

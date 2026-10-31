@@ -1,4 +1,4 @@
-# Requirement coverage — v0.2.2
+# Requirement coverage — v0.3.0
 
 Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Built** = working in this release;
 **Mock** = working end to end against a mock adapter (real endpoint is configuration in Phase B);
@@ -18,12 +18,12 @@ Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Bu
 | | OR10003 | Built / Mock | E-mail to Customer Care through the mail backend; SMS recorded as preview until the gateway is connected |
 | Card Printing | CP10003, CP10006, CP10007 | Built | Print queue of flagged cards, card table with ISO 7811 tracks, cleaned print names |
 | | CP10001, CP10002, CP10004, CP10005 | A2 | PHI reconciliation before print, encoding register, spoil override, daily reset |
-| Card Verification | CV10001–04 | A2 | Swipe (keyboard wedge) and reconciliation |
-| Card Dispatch | CD10001–10 | A2 | Serial, recipient, signature pad, entry-to-dispatch time, serial report |
+| Card Verification | CV10001–04 | v0.6 | Swipe (keyboard wedge) and reconciliation |
+| Card Dispatch | CD10001–10 | v0.6 | Serial, recipient, signature pad, entry-to-dispatch time, serial report |
 | Interaction Logging | IL10001–02 | Built | Append-only log (DB-enforced) with notes |
 | Application Tracking | AT10001 | Built | TRN, tracking number, member number, programme |
-| Form Scanning | FS10001–06 | A3 | Scan/upload, OCR pre-fill, batch intake, retention |
-| Reporting | RP10001–03 | A3 | Dashboards, saved reports, export (home counters only now) |
+| Form Scanning | FS10001–06 | v0.4 | Scan/upload, OCR pre-fill, batch intake, retention |
+| Reporting | RP10001–03 | Built | Twelve standard reports with CSV/Excel export; report builder with saved and shared reports; no IT involvement (v0.3) |
 
 ## Technical
 
@@ -40,8 +40,8 @@ Against NHF's Functional_Requirements.xlsx and Technical_Requirements.xlsx. **Bu
 | | IN10005 | A2 | Signature pad |
 | Audit | AL10001, AL10002 | Built | Append-only audit (DB-enforced) with user, IP and request id; error logging to the container log |
 | Notifications | NT10001, NT10004 | Built | In-app inbox, e-mail, SMS preview, links to records; security and data-protection alerts (v0.2) |
-| | NT10002, NT10003 | A3 | Recurring reminders, escalation of overdue items |
-| Reporting and Analytics | RA10001–03 | A3 | |
+| | NT10002, NT10003 | Built | Scheduled report e-mails (daily/weekly/monthly); hourly escalation of overdue applications, doctor confirmations, SRN requests and print queue (v0.3) |
+| Reporting and Analytics | RA10001–03 | Built | Member-behaviour report; live dashboard refreshing every minute (v0.3) |
 | Compliance and Security | CS10002, CS10005 | Built | Conditions masked outside clinical roles; CSP with nonces, CSRF, secure cookies, lockout |
 | | CS10001, CS10003 | Built | Data Protection Act module and security alerts (v0.2) — see docs/data-protection.md, docs/security.md |
 | | CS10004 | B | VAPT before go-live; docs/security.md is the tester's checklist |

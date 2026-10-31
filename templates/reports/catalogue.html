@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div><h1>Reports</h1><p class="text-sm text-slate-500">Standard reports, the ones you have saved, and those shared with you. Each shows only what your role may see.</p></div>
+  <div class="flex gap-2"><a class="btn-secondary" href="{% url 'reports:dashboard' %}">Dashboard</a><a class="btn-primary" href="{% url 'reports:builder' %}">Build a report</a></div>
+</div>
+<div class="grid lg:grid-cols-[1fr_26rem] gap-5">
+  <div class="card">
+    <div class="card-h"><h2>Standard reports</h2></div>
+    <ul class="divide-y divide-slate-100 dark:divide-slate-700">
+      {% for key, title, desc in reports %}
+      <li class="px-4 py-3"><a class="font-semibold" href="{% url 'reports:standard' key %}">{{ title }}</a><p class="text-sm text-slate-500">{{ desc }}</p></li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card self-start">
+    <div class="card-h"><h2>Saved reports</h2></div>
+    {% if saved %}
+    <ul class="divide-y divide-slate-100 dark:divide-slate-700">
+      {% for r in saved %}
+      <li class="px-4 py-3">
+        <div class="flex items-start justify-between gap-2">
+          <div><a class="font-semibold" href="{% url 'reports:saved' r.pk %}">{{ r.name }}</a>
+            <div class="text-xs text-slate-500">{{ r.get_kind_display }} · {% if r.owner_id == request.user.pk %}yours{% else %}shared by {{ r.owner.username }}{% endif %}{% if r.shared and r.owner_id == request.user.pk %} · shared{% endif %}</div>
+            {% if r.description %}<div class="text-xs mt-0.5">{{ r.description }}</div>{% endif %}
+          </div>
+          <div class="flex gap-1 shrink-0">
+            {% if r.aggregate_only %}<a class="btn-secondary btn-sm" href="{% url 'reports:schedule' r.pk %}">Schedule</a>{% endif %}
+            {% if r.owner_id == request.user.pk %}<form method="post" action="{% url 'reports:delete' r.pk %}">{% csrf_token %}<button class="btn-secondary btn-sm" data-confirm="Delete '{{ r.name }}'? Its schedules stop too.">Delete</button></form>{% endif %}
+          </div>
+        </div>
+        {% for s in r.schedules.all %}{% if s.active %}
+        <div class="mt-2 text-xs flex flex-wrap items-center gap-2 rounded bg-slate-50 dark:bg-slate-800/50 px-2 py-1">
+          <span>✉ {{ s.get_frequency_display }} at {{ s.hour }}:00 · next {{ s.next_run_at|date:"D j M H:i" }}{% if s.last_result %} · last: {{ s.last_result }}{% endif %}</span>
+          {% if s.created_by_id == request.user.pk or r.owner_id == request.user.pk %}
+          <form method="post" action="{% url 'reports:schedule-send-now' s.pk %}">{% csrf_token %}<button class="underline">Send now</button></form>
+          <form method="post" action="{% url 'reports:schedule-stop' s.pk %}">{% csrf_token %}<button class="underline text-red-700" data-confirm="Stop this scheduled e-mail?">Stop</button></form>
+          {% endif %}
+        </div>
+        {% endif %}{% endfor %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="card-b text-sm text-slate-500">Nothing saved yet. Open a standard report or the report builder and press <em>Save</em>.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

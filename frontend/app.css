@@ -309,3 +309,29 @@ html.dark .id-doc { --tw-ring-color: rgba(148,163,184,.25); }
   .howto-hero, .channel-tabs, .flow-controls, .no-print { display: none !important; }
   .flow-stage { display: grid !important; break-inside: avoid; margin-bottom: 1rem; }
 }
+
+/* ---- Report charts (server-drawn SVG, v0.3) ---- */
+@layer components {
+  .ch-bar { fill: var(--color-brand-500); }
+  .ch-bar-hi { fill: #d97706; }
+  .ch-label { font-size: 12px; fill: #334155; }
+  .ch-value { font-size: 12px; fill: #0f172a; font-weight: 600; }
+  .ch-axis { font-size: 11px; fill: #64748b; }
+  .ch-grid { stroke: #e2e8f0; stroke-width: 1; }
+  .ch-target { stroke: #d97706; stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .ch-target-label { font-size: 11px; fill: #b45309; font-weight: 600; }
+  .ch-line { stroke-width: 2.25; }
+  .ch-s1 { stroke: var(--color-brand-600); fill: var(--color-brand-600); }
+  .ch-s2 { stroke: #2563eb; fill: #2563eb; }
+  .ch-s3 { stroke: #d97706; fill: #d97706; }
+  .ch-s4 { stroke: #7c3aed; fill: #7c3aed; }
+  polyline.ch-line { fill: none; }
+  .ch-key { display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: currentColor; }
+  .ch-key.ch-s1 { background: var(--color-brand-600); } .ch-key.ch-s2 { background: #2563eb; }
+  .ch-key.ch-s3 { background: #d97706; } .ch-key.ch-s4 { background: #7c3aed; }
+  .kpi { @apply card p-4; }
+  .kpi-v { @apply text-2xl font-bold tracking-tight; }
+  .kpi-l { @apply text-xs text-slate-500 mt-0.5; }
+  .dark .ch-label { fill: #cbd5e1; } .dark .ch-value { fill: #f1f5f9; } .dark .ch-axis { fill: #94a3b8; }
+  .dark .ch-grid { stroke: #334155; } .dark .ch-bar { fill: #2bb3a0; }
+}

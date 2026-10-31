@@ -154,6 +154,11 @@ class Command(BaseCommand):
                     filled = self._identity_details(random.Random(1616))  # noqa: S311  # nosec B311
                 self.stdout.write(f"demo: NIS numbers and ID documents filled for {filled} people")
                 done = True
+            if Application.objects.filter(status__in=("approved", "rejected")).count() < 200:  # upgrade to v0.3: a year of history for reports
+                with transaction.atomic():
+                    made = self._history(random.Random(2026))  # noqa: S311  # nosec B311
+                self.stdout.write(f"demo: {made} historical applications added for the reports")
+                done = True
             if not done:
                 self.stdout.write("demo data present; skipped")
             return
@@ -169,6 +174,8 @@ class Command(BaseCommand):
             taj = self._taj(rng, opts["members"])
             self._members(rng, taj, doctors, users)
         self._open_queue(rng, doctors, users)
+        with transaction.atomic():
+            self._history(random.Random(2026))  # noqa: S311  # nosec B311
         self._identity_details(random.Random(1616))  # noqa: S311  # nosec B311
         self._privacy_examples(users)
         self.stdout.write(
@@ -601,6 +608,163 @@ class Command(BaseCommand):
             actions="Recipient asked to delete the message; address corrected on the record.",
             logged_by=users["dpo.grant"],
         )
+
+    def _history(self, rng):
+        """A year of decided applications behind the members, so the reports and dashboard have something to show.
+
+        Walk-ins mostly inside the 15-minute target, online forms over hours, mailed forms over days; rejections with
+        reasons; change forms (medical updates, contact changes, replacement cards) and a few repeat replacements.
+        """
+        from apps.rules.models import RejectionReason
+
+        now = timezone.now()
+        year_ago = now - timedelta(days=365)
+        users = get_user_model()
+        staff = {u.centre_id: u for u in users.objects.filter(groups__name="customer_care").select_related("centre") if u.centre_id}
+        any_staff = list(staff.values()) or [None]
+        ho = Centre.objects.filter(code="HO").first()
+        doctors = list(Doctor.objects.filter(status="confirmed").values_list("mcj_number", flat=True)[:200]) or [""]
+        reasons = {r.code: r for r in RejectionReason.objects.all()}
+        weights = [("walk_in", 62), ("online", 24), ("mail", 7), ("email", 5), ("batch", 2)]
+        channels = [c for c, w in weights for _ in range(w)]
+
+        def wait(channel):
+            if channel == "walk_in":
+                return timedelta(minutes=max(4, rng.gauss(12, 5)) if rng.random() < 0.86 else rng.uniform(16, 55))
+            if channel == "online":
+                return timedelta(hours=rng.uniform(0.5, 30))
+            if channel == "mail":
+                return timedelta(days=rng.uniform(2, 9))
+            if channel == "email":
+                return timedelta(hours=rng.uniform(2, 40))
+            return timedelta(days=rng.uniform(1, 5))
+
+        members = list(Member.objects.filter(registered_at__gte=year_ago, applications__isnull=True).select_related("registered_centre"))
+        apps, made = [], 0
+
+        def tracking(when):
+            with connection.cursor() as cur:
+                cur.execute("SELECT nextval('members_tracking_seq')")
+                return f"NHF-A-{timezone.localtime(when).year}-{cur.fetchone()[0]:07d}"
+
+        def base(m, channel, received, decided, status, kind="new", **extra):
+            centre = ho if channel == "online" and ho else m.registered_centre
+            who = staff.get(centre.pk) or rng.choice(any_staff)
+            return Application(
+                tracking_number=tracking(received),
+                kind=kind,
+                channel=channel,
+                centre=centre,
+                received_at=received,
+                entered_by=who,
+                status=status,
+                member=m if status == "approved" else None,
+                trn=m.trn,
+                identity_confirmed=True,
+                form_first_name=m.first_name,
+                form_last_name=m.last_name,
+                form_dob=m.dob,
+                first_name=m.first_name,
+                last_name=m.last_name,
+                dob=m.dob,
+                gender=m.gender,
+                parish=m.parish,
+                address_line1=m.address_line1,
+                phone_mobile=m.phone_mobile,
+                collection_centre=m.collection_centre,
+                doctor_mcj=rng.choice(doctors),
+                declaration_signed=True,
+                doctor_signed=True,
+                consent_given=True,
+                consent_at=received,
+                consent_version="2026-11",
+                decided_at=decided,
+                decided_by=who,
+                **extra,
+            )
+
+        for m in members:
+            channel = rng.choice(channels)
+            received = m.registered_at - wait(channel)
+            apps.append(base(m, channel, received, m.registered_at, "approved"))
+        # Rejections: people who applied and were turned down (not members).
+        spare = list(TajIdentity.objects.filter(demo_note="").exclude(trn__in=Member.objects.values("trn"))[:120])
+        reason_mix = (
+            ["incomplete_form"] * 5
+            + ["not_certified"] * 3
+            + ["trn_mismatch"] * 3
+            + ["duplicate_application"] * 2
+            + ["doctor_unconfirmed", "not_eligible", "guardian_missing"]
+        )
+        for t in spare[:90]:
+            channel = rng.choice(channels)
+            received = year_ago + timedelta(seconds=rng.randint(0, 365 * 86400 - 3600))
+            fake = Member(trn=t.trn, first_name=t.first_name, last_name=t.last_name, dob=t.dob, gender=t.gender, parish=t.parish or "KGN")
+            fake.registered_centre = rng.choice(list(Centre.objects.filter(is_active=True)))
+            fake.collection_centre = fake.registered_centre
+            reason = reasons.get(rng.choice(reason_mix))
+            apps.append(base(fake, channel, received, received + wait(channel), "rejected", rejection_reason=reason))
+        # Change forms from existing members.
+        old = list(Member.objects.filter(registered_at__lt=year_ago).select_related("registered_centre", "collection_centre").order_by("?")[:420])
+        replacements = []
+        for i, m in enumerate(old):
+            roll = 0.85 if i < 6 else rng.random()  # the first few always replace a card (repeat-replacement examples)
+            channel = "online" if roll < 0.45 and rng.random() < 0.6 else rng.choice(["walk_in", "walk_in", "walk_in", "email"])
+            received = year_ago + timedelta(seconds=rng.randint(0, 365 * 86400 - 3600))
+            flags = {}
+            if roll < 0.45:
+                flags["change_conditions"] = True
+            elif roll < 0.75:
+                flags["change_contact"] = True
+            elif roll < 0.95:
+                flags["reprint_reason"] = "replacement"
+                replacements.append((m, received))
+                if i < 6:  # a few members who lose cards repeatedly
+                    for k in (1, 2):
+                        again = received + timedelta(days=30 * k + rng.randint(0, 20))
+                        if again < now:
+                            apps.append(base(m, "walk_in", again, again + wait("walk_in"), "approved", kind="change", reprint_reason="replacement"))
+                            replacements.append((m, again))
+            else:
+                flags["change_guardian"] = True
+            apps.append(base(m, channel, received, received + wait(channel), "approved", kind="change", **flags))
+        Application.objects.bulk_create(apps, batch_size=1000)
+        made = len(apps)
+        # Replacement cards and the interaction log for the history.
+        versions = {}
+        cards = []
+        for m, when in sorted(replacements, key=lambda x: x[1]):
+            v = versions.get(m.pk) or (m.cards.order_by("-version_no").values_list("version_no", flat=True).first() or 1)
+            v += 1
+            versions[m.pk] = v
+            card = Card(member=m, version_no=v, reason="replacement", centre=m.collection_centre, print_name=clean_card_name(m.full_name)[:60], queued_at=when)
+            card.encode_tracks()
+            card.state = "dispatched"
+            card.printed_at = when + timedelta(minutes=rng.randint(4, 9))
+            card.verified_at = card.printed_at + timedelta(minutes=2)
+            card.dispatched_at = card.verified_at + timedelta(minutes=2)
+            card.serial_number = f"NHF{when:%y}{rng.randint(1000000, 9999999)}"
+            card.phi_reconciled_at = when
+            cards.append(card)
+        Card.objects.bulk_create(cards, batch_size=1000)
+        kinds = {"walk_in": "visit", "online": "system", "mail": "note", "email": "email", "batch": "note"}
+        Interaction.objects.bulk_create(
+            [
+                Interaction(
+                    at=a.decided_at,
+                    member=a.member,
+                    application=a,
+                    kind=kinds.get(a.channel, "note"),
+                    event=f"application.{a.status}",
+                    summary=f"{a.get_kind_display()} {a.tracking_number} {a.status}",
+                    actor=a.decided_by,
+                    centre=a.centre,
+                )
+                for a in Application.objects.filter(tracking_number__in=[x.tracking_number for x in apps])
+            ],
+            batch_size=1000,
+        )
+        return made
 
     def _open_queue(self, rng, doctors, users):
         """Work in progress so the queues and dashboards are not empty."""

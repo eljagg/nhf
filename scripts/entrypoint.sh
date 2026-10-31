@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Container entrypoint. Usage: entrypoint.sh web|worker|beat|migrate|shell
+# Container entrypoint. Usage: entrypoint.sh web|worker|beat|migrate|shell|jobs
 #   migrate  migrate → roles → admin → reference data → (DEMO_DATA=1 seed once | reseed rebuild)
 #   web      migrate step (unless MIGRATE_ON_START=0), then gunicorn
 # Every step is idempotent. On NHF's servers set MIGRATE_ON_START=0 and run `migrate` as a release job.
@@ -32,5 +32,6 @@ case "${1:-web}" in
   beat)   exec celery -A config beat --loglevel=INFO ;;
   migrate) schema_step ;;
   shell)  exec python manage.py shell ;;
+  jobs)   exec python manage.py run_scheduled_jobs ;;
   *)      exec "$@" ;;
 esac

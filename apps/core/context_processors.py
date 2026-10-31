@@ -86,14 +86,16 @@ def site(request):
             "Card Services",
             [
                 _item("Print queue", "cards:queue", request, ("customer_care", "supervisor", "manager", "print_operator")),
-                _item("Verify and dispatch", None, request, note="A2"),
+                _item("Verify and dispatch", None, request, note="v0.6"),
             ],
         ),
         (
             "Insights",
             [
-                _item("Dashboards and reports", None, request, note="A3"),
-                _item("Documents and scanning", None, request, note="A3"),
+                _item("Dashboard", "reports:dashboard", request, ("supervisor", "manager", "back_office", "auditor", "dpo")),
+                _item("Reports", "reports:catalogue", request, ("supervisor", "manager", "back_office", "auditor", "dpo")),
+                _item("Report builder", "reports:builder", request, ("supervisor", "manager", "back_office", "auditor", "dpo")),
+                _item("Documents and scanning", None, request, note="v0.4"),
             ],
         ),
         (

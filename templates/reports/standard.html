@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-3">
+  <div><a class="text-xs" href="{% url 'reports:catalogue' %}">← Reports</a><h1>{{ report.title }}</h1><p class="text-sm text-slate-500">{{ report.description }}</p></div>
+  <div class="flex flex-wrap gap-2 no-print">
+    <a class="btn-secondary" href="?{{ query }}{% if query %}&{% endif %}format=csv">CSV</a>
+    <a class="btn-secondary" href="?{{ query }}{% if query %}&{% endif %}format=xlsx">Excel</a>
+    <button class="btn-secondary" type="button" data-print>Print</button>
+  </div>
+</div>
+{% include "reports/_filters.html" %}
+<div class="space-y-5">
+  {% for t in report.tables %}
+  <div class="card">
+    <div class="card-h"><h2>{{ t.title }}</h2>{% if t.personal %}<span class="b-amber" title="Lists individual people or staff. Left out of scheduled e-mails.">Names individuals</span>{% endif %}</div>
+    {% if t.chart %}<div class="card-b border-b border-slate-100 dark:border-slate-700 max-w-3xl">{{ t.chart }}</div>{% endif %}
+    <div class="overflow-x-auto"><table class="tbl"><thead><tr>{% for h in t.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead><tbody>
+      {% for row in t.rows %}<tr class="{% if forloop.last and row.0 == 'Total' %}font-semibold{% endif %}">{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>{% empty %}<tr><td colspan="{{ t.headers|length }}" class="text-slate-500">Nothing for this period.</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% if t.note %}<p class="px-4 py-2 text-xs text-slate-500">{{ t.note }}</p>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+<form method="post" action="{% url 'reports:save-standard' report.key %}" class="card p-4 mt-5 flex flex-wrap items-end gap-3 no-print">{% csrf_token %}
+  <input type="hidden" name="preset" value="{{ request.GET.preset }}"><input type="hidden" name="centre" value="{{ request.GET.centre }}"><input type="hidden" name="channel" value="{{ request.GET.channel }}">
+  <div class="grow max-w-sm"><label class="lbl" for="id_name">Save this report as</label>{{ save_form.name }}</div>
+  <div class="grow max-w-sm"><label class="lbl" for="id_description">Note (optional)</label>{{ save_form.description }}</div>
+  <label class="flex items-center gap-2 text-sm">{{ save_form.shared }} Share with everyone who uses reports</label>
+  <button class="btn-secondary">Save</button>
+  <p class="w-full text-xs text-slate-500">Saved reports keep the period as a rolling window (for example "last 30 days"), so they stay current and can be e-mailed on a schedule.</p>
+</form>
+{% endblock %}
