@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.1 — 31 October 2026 — 21 card locations
+
+- NHF's card locations are now 21, as NHF lists them: Cornwall Regional Hospital and Mount Salem Health Centre (both Montego Bay) are separate centres instead of one combined entry. The How to apply page, centre lists, reports and the AD group mapping (`NHF-Centre-MSH`) pick it up on the next deploy; no reseed needed.
+
 ## v0.3.0 — 30 October 2026 — reporting and analytics
 
 - **Dashboard** (RA10002, RA10003): live figures that refresh every minute.

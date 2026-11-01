@@ -275,3 +275,11 @@ def test_date_pickers_render_iso_dates_so_a_resave_keeps_them(agent, taj, run_co
     agent.id_issue_date = date(2020, 1, 2)
     assert 'value="2020-01-02"' in str(StaffForm(instance=agent)["id_issue_date"])
     assert 'value="2031-05-06"' in str(IdDocumentForm(instance=Member(id_expiry=date(2031, 5, 6)))["id_expiry"])
+
+
+def test_twenty_one_card_locations():
+    """NHF lists 21 card locations: Cornwall Regional and Mount Salem are separate (v0.3.1)."""
+    active = Centre.objects.filter(is_active=True)
+    assert active.count() == 21
+    assert active.get(code="MBJ").address == "Cornwall Regional Hospital, Mount Salem, Montego Bay"
+    assert active.get(code="MSH").name == "Mount Salem Health Centre Drug Serv"

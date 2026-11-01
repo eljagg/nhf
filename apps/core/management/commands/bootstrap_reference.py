@@ -20,6 +20,7 @@ HEAD_OFFICE_HOURS = "Mon–Thu 7:00am–4:30pm · Fri 7:00am–3:30pm (call cent
 CENTRES = [
     ("HO", "Head Office", "AND", "The Towers, 25 Dominica Drive, New Kingston", "head_office"),
     ("MBJ", "Cornwall Regional Hospital Drug Serv", "JAM", "Cornwall Regional Hospital (CRH), St James", "drug_serv"),
+    ("MSH", "Mount Salem Health Centre Drug Serv", "JAM", "Mount Salem Health Centre, St James", "drug_serv"),
     ("MDV", "Mandeville Regional Hospital Drug Serv", "MAN", "Mandeville Regional Hospital (MRH), Manchester", "drug_serv"),
     ("SPT", "Spanish Town Hospital Drug Serv", "CAT", "Spanish Town Hospital, St Catherine", "drug_serv"),
     ("LIN", "Linstead Hospital Drug Serv", "CAT", "Linstead Hospital, St Catherine", "drug_serv"),
@@ -55,7 +56,8 @@ CENTRE_DETAILS = {
     "BRV": ("Black River Hospital, 45 High Street, Black River", "876-634-3339"),
     "SAV": ("Savanna-la-Mar Public General Hospital, Barracks Road, Savanna-la-Mar", "876-955-9946"),
     "LUC": ("Noel Holmes Hospital, Fourth Charles Drive, Lucea", "876-956-2733"),
-    "MBJ": ("Cornwall Regional Hospital & Mount Salem Health Centre, Mount Salem, Montego Bay", ""),
+    "MBJ": ("Cornwall Regional Hospital, Mount Salem, Montego Bay", ""),
+    "MSH": ("Mount Salem Health Centre, Mount Salem, Montego Bay", ""),
     "FAL": ("Falmouth Hospital, Rodney Street, Falmouth", "876-954-3250"),
     "SAB": ("St Ann's Bay Hospital, Seville, St Ann's Bay", "876-972-2272 · 876-972-2273"),
     "PMA": ("Port Maria Hospital, Trinity, Port Maria", "876-994-2228"),
@@ -299,6 +301,7 @@ GROUP_MAPPINGS = [
     ("NHF-MRS-PrintOperators", "print_operator", None),
     ("NHF-Centre-HWT", "", "HWT"),
     ("NHF-Centre-MBJ", "", "MBJ"),
+    ("NHF-Centre-MSH", "", "MSH"),
     ("NHF-Centre-HO", "", "HO"),
 ]
 
@@ -321,6 +324,8 @@ class Command(BaseCommand):
                     hours=centre.hours or hours,
                 )
         defaults_by_code = {c[0]: c[3] for c in CENTRES}
+        # v0.3.1: NHF lists 21 card locations; Cornwall Regional and Mount Salem were one entry before.
+        Centre.objects.filter(code="MBJ", address="Cornwall Regional Hospital & Mount Salem Health Centre, Mount Salem, Montego Bay").update(address="")
         for code, (street, phone) in CENTRE_DETAILS.items():
             centre = Centre.objects.filter(code=code).first()
             if centre is None:
